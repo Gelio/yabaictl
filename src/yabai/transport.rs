@@ -10,21 +10,21 @@ pub struct Frame {
     pub height: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct SpaceId(pub u32);
 
 /// Index used by MacOS Mission Control.
 /// Changes when the space is moved between displays
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct SpaceIndex(pub u32);
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct DisplayId(pub u32);
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct DisplayIndex(pub u32);
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub struct WindowId(pub u32);
 
 #[derive(Debug, Deserialize)]

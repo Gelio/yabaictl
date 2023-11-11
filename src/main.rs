@@ -1,5 +1,9 @@
 use clap::{Parser, Subcommand};
-use yabaictl::yabai::{cli::execute_yabai_cmd, command::FocusSpaceByIndex, transport::SpaceIndex};
+use yabaictl::yabai::{
+    cli::execute_yabai_cmd,
+    command::{FocusSpaceByIndex, QuerySpaceByIndex},
+    transport::SpaceIndex,
+};
 
 #[derive(Parser)]
 #[command(author, version)]
@@ -18,10 +22,15 @@ fn main() {
 
     match cli.command {
         Command::FocusSpace { index } => {
-            execute_yabai_cmd(&FocusSpaceByIndex {
-                index: SpaceIndex(index),
-            })
-            .expect("could not execute yabai cmd");
+            let space_index = SpaceIndex(index);
+            let space = execute_yabai_cmd(&QuerySpaceByIndex::new(space_index))
+                .expect("could not execute yabai cmd")
+                .expect("parsing output failed");
+
+            println!("Got space: {space:?}");
+
+            execute_yabai_cmd(&FocusSpaceByIndex::new(space_index))
+                .expect("could not execute yabai cmd");
         }
     }
     // let output = Command::new("yabai")
