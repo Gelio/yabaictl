@@ -1,10 +1,29 @@
+use clap::{Parser, Subcommand};
 use yabaictl::yabai::{cli::execute_yabai_cmd, command::FocusSpaceByIndex, transport::SpaceIndex};
 
+#[derive(Parser)]
+#[command(author, version)]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    FocusSpace { index: u32 },
+}
+
 fn main() {
-    execute_yabai_cmd(&FocusSpaceByIndex {
-        index: SpaceIndex(5),
-    })
-    .expect("could not execute yabai cmd");
+    let cli = Cli::parse();
+
+    match cli.command {
+        Command::FocusSpace { index } => {
+            execute_yabai_cmd(&FocusSpaceByIndex {
+                index: SpaceIndex(index),
+            })
+            .expect("could not execute yabai cmd");
+        }
+    }
     // let output = Command::new("yabai")
     //     .args(["-m", "query", "--spaces"])
     //     .output()
