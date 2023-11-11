@@ -1,9 +1,5 @@
 use clap::{Parser, Subcommand};
-use yabaictl::yabai::{
-    cli::execute_yabai_cmd,
-    command::{FocusSpaceByIndex, QuerySpaceByIndex},
-    transport::SpaceIndex,
-};
+use yabaictl::{cli::focus_space::focus_space_by_index, yabai::transport::SpaceIndex};
 
 #[derive(Parser)]
 #[command(author, version)]
@@ -17,30 +13,10 @@ enum Command {
     FocusSpace { index: u32 },
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::FocusSpace { index } => {
-            let space_index = SpaceIndex(index);
-            let space = execute_yabai_cmd(&QuerySpaceByIndex::new(space_index))
-                .expect("could not execute yabai cmd")
-                .expect("parsing output failed");
-
-            println!("Got space: {space:?}");
-
-            execute_yabai_cmd(&FocusSpaceByIndex::new(space_index))
-                .expect("could not execute yabai cmd");
-        }
+        Command::FocusSpace { index } => focus_space_by_index(SpaceIndex(index)),
     }
-    // let output = Command::new("yabai")
-    //     .args(["-m", "query", "--spaces"])
-    //     .output()
-    //     .expect("could not run yabai");
-    // let output = String::from_utf8(output.stdout).expect("output is not valid utf-8");
-    // let spaces = serde_json::from_str::<Vec<Space>>(&output).expect("could not parse result");
-    //
-    // for space in spaces {
-    //     println!("Space {} has {} windows", space.index, space.windows.len());
-    // }
 }
