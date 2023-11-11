@@ -13,19 +13,27 @@ pub struct Frame {
 #[derive(Debug, Deserialize)]
 pub struct SpaceId(usize);
 
+/// Index used by MacOS Mission Control.
+/// Changes when the space is moved between displays
+#[derive(Debug, Deserialize)]
+pub struct SpaceIndex(usize);
+
 #[derive(Debug, Deserialize)]
 pub struct DisplayId(usize);
+
+#[derive(Debug, Deserialize)]
+pub struct DisplayIndex(usize);
 
 #[derive(Debug, Deserialize)]
 pub struct WindowId(usize);
 
 #[derive(Debug, Deserialize)]
 pub struct Display {
-    pub id: u32,
+    pub id: DisplayId,
     pub uuid: String,
-    pub index: u32,
+    pub index: DisplayIndex,
     pub frame: Frame,
-    pub spaces: Vec<SpaceId>,
+    pub spaces: Vec<SpaceIndex>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -35,7 +43,7 @@ pub enum SpaceType {
     Stack,
 }
 
-fn deserialize_window_id<'de, D: Deserializer<'de>>(
+fn deserialize_window_id_maybe_zero<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<WindowId>, D::Error> {
     let window_id = WindowId::deserialize(deserializer)?;
@@ -57,23 +65,22 @@ fn deserialize_space_label<'de, D: Deserializer<'de>>(
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Space {
-    pub id: u32,
+    pub id: SpaceId,
     pub uuid: String,
 
-    /// Index used by MacOS Mission Control.
-    /// Changes when the space is moved between displays
-    pub index: u32,
+    pub index: SpaceIndex,
 
     #[serde(deserialize_with = "deserialize_space_label")]
     pub label: Option<String>,
 
     pub r#type: SpaceType,
-    pub display: DisplayId,
+    #[serde(rename = "display")]
+    pub display_index: DisplayIndex,
     pub windows: Vec<WindowId>,
 
-    #[serde(deserialize_with = "deserialize_window_id")]
+    #[serde(deserialize_with = "deserialize_window_id_maybe_zero")]
     pub first_window: Option<WindowId>,
-    #[serde(deserialize_with = "deserialize_window_id")]
+    #[serde(deserialize_with = "deserialize_window_id_maybe_zero")]
     pub last_window: Option<WindowId>,
 
     pub has_focus: bool,
@@ -91,8 +98,12 @@ pub struct Window {
     pub app: String,
     pub title: String,
     pub frame: Frame,
-    pub display: DisplayId,
-    pub space: SpaceId,
+
+    #[serde(rename = "display")]
+    pub display_index: DisplayIndex,
+    #[serde(rename = "space")]
+    pub space_index: SpaceIndex,
+
     pub has_focus: bool,
     pub is_visible: bool,
     pub is_hidden: bool,
