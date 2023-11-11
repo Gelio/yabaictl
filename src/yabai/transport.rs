@@ -11,21 +11,21 @@ pub struct Frame {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct SpaceId(pub usize);
+pub struct SpaceId(pub u32);
 
 /// Index used by MacOS Mission Control.
 /// Changes when the space is moved between displays
 #[derive(Debug, Deserialize)]
-pub struct SpaceIndex(pub usize);
+pub struct SpaceIndex(pub u32);
 
 #[derive(Debug, Deserialize)]
-pub struct DisplayId(pub usize);
+pub struct DisplayId(pub u32);
 
 #[derive(Debug, Deserialize)]
-pub struct DisplayIndex(pub usize);
+pub struct DisplayIndex(pub u32);
 
 #[derive(Debug, Deserialize)]
-pub struct WindowId(pub usize);
+pub struct WindowId(pub u32);
 
 #[derive(Debug, Deserialize)]
 pub struct Display {
