@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use serde::{Deserialize, Deserializer};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Frame {
     pub x: f32,
     pub y: f32,
@@ -86,9 +86,9 @@ pub struct Display {
     pub spaces: Vec<SpaceIndex>,
 }
 
-impl<'a> From<&'a Display> for &'a Frame {
-    fn from(value: &'a Display) -> Self {
-        &value.frame
+impl AsRef<Frame> for Display {
+    fn as_ref(&self) -> &Frame {
+        &self.frame
     }
 }
 
@@ -167,9 +167,9 @@ pub struct Window {
     pub is_sticky: bool,
 }
 
-impl<'a> From<&'a Window> for &'a Frame {
-    fn from(value: &'a Window) -> Self {
-        &value.frame
+impl AsRef<Frame> for Window {
+    fn as_ref(&self) -> &Frame {
+        &self.frame
     }
 }
 

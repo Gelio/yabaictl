@@ -6,7 +6,7 @@ use log::{info, warn};
 
 use crate::yabai::{
     cli::execute_yabai_cmd,
-    command::{FocusWindowById, QueryDisplays, QuerySpaces, QueryWindows},
+    command::{FocusSpaceByIndex, FocusWindowById, QueryDisplays, QuerySpaces, QueryWindows},
     transport::{Display, Frame, Space, Window},
 };
 
@@ -51,38 +51,66 @@ pub fn focus_window_in_direction(direction: Direction) -> anyhow::Result<()> {
 
     let focused_frame: &Frame = active_ui_element.as_ref();
 
-    let window_candidates =
-        get_candidates_in_direction(focused_frame, other_windows.iter().copied(), direction);
-
-    let window_to_focus = find_closest_in_direction(
-        Vector2D::from_frame_center(focused_frame),
-        window_candidates.iter().copied(),
-        |window| Vector2D::from_frame_center(&window.frame),
-        direction.into(),
-    );
-
-    if let Some(window_to_focus) = window_to_focus {
+    if let Some(window_to_focus) = get_element_to_focus(focused_frame, &other_windows, direction) {
         info!("Focusing window with ID {}", window_to_focus.id.0);
 
         let _ = execute_yabai_cmd(&FocusWindowById::new(window_to_focus.id))
             .with_context(|| format!("Could not focus window with ID {}", window_to_focus.id.0));
     } else {
         warn!("No window in direction {:?}", direction);
-        // TODO: try focusing a space
+
+        let visible_spaces: Vec<_> = get_spaces()?
+            .into_iter()
+            .filter(|space| space.is_visible && !space.has_focus)
+            .collect();
+
+        let displays: Vec<_> = get_displays()?;
+        let spaces_with_frames: Vec<_> = visible_spaces
+            .into_iter()
+            .map(|space| {
+                let display = displays
+                    .iter()
+                    .find(|display| display.index == space.display_index)
+                    .expect("Each space belongs to some display");
+
+                SpaceWithFrame {
+                    space,
+                    frame: display.frame.clone(),
+                }
+            })
+            .collect();
+
+        match get_element_to_focus(focused_frame, &spaces_with_frames, direction) {
+            Some(space_to_focus) => {
+                info!("Focusing space with index {:?}", space_to_focus.space.index);
+
+                let _ = execute_yabai_cmd(&FocusSpaceByIndex::new(space_to_focus.space.index))
+                    .with_context(|| {
+                        format!(
+                            "Could not focus space with index {:?}",
+                            space_to_focus.space.index
+                        )
+                    });
+            }
+
+            None => {
+                warn!("No space in direction {:?}", direction);
+            }
+        }
     }
 
     Ok(())
 }
 
 enum ActiveUIElement<'w> {
-    Space(Space, Display),
+    Space(SpaceWithFrame),
     Window(&'w Window),
 }
 
 impl<'w> AsRef<Frame> for ActiveUIElement<'w> {
     fn as_ref(&self) -> &Frame {
         match self {
-            ActiveUIElement::Space(_, display) => &display.frame,
+            ActiveUIElement::Space(SpaceWithFrame { space: _, frame }) => frame,
             ActiveUIElement::Window(window) => &window.frame,
         }
     }
@@ -95,20 +123,12 @@ fn find_active_ui_element(windows: &[Window]) -> anyhow::Result<ActiveUIElement>
         return Ok(ActiveUIElement::Window(window));
     }
 
-    let spaces = execute_yabai_cmd(&QuerySpaces)
-        .context("Could not query spaces")?
-        .context("Could not parse spaces")?;
-
-    let focused_space = spaces
+    let focused_space = get_spaces()?
         .into_iter()
         .find(|space| space.has_focus)
         .ok_or_else(|| anyhow!("No space has focus"))?;
 
-    let displays = execute_yabai_cmd(&QueryDisplays)
-        .context("Could not query displays")?
-        .context("Could not parse displays")?;
-
-    let display_with_focused_space = displays
+    let display_with_focused_space = get_displays()?
         .into_iter()
         .find(|display| display.index == focused_space.display_index)
         .ok_or_else(|| {
@@ -118,21 +138,43 @@ fn find_active_ui_element(windows: &[Window]) -> anyhow::Result<ActiveUIElement>
             )
         })?;
 
-    Ok(ActiveUIElement::Space(
-        focused_space,
-        display_with_focused_space,
-    ))
+    Ok(ActiveUIElement::Space(SpaceWithFrame {
+        space: focused_space,
+        frame: display_with_focused_space.frame,
+    }))
 }
 
-fn get_candidates_in_direction<'a, 'b, T, U, Iter>(
-    main: &'a T,
+fn get_spaces() -> anyhow::Result<Vec<Space>> {
+    execute_yabai_cmd(&QuerySpaces)
+        .context("Could not query spaces")?
+        .context("Could not parse spaces")
+}
+
+fn get_displays() -> anyhow::Result<Vec<Display>> {
+    execute_yabai_cmd(&QueryDisplays)
+        .context("Could not query displays")?
+        .context("Could not parse displays")
+}
+
+struct SpaceWithFrame {
+    space: Space,
+    frame: Frame,
+}
+
+impl AsRef<Frame> for SpaceWithFrame {
+    fn as_ref(&self) -> &Frame {
+        &self.frame
+    }
+}
+
+fn get_candidates_in_direction<'a, 'b, T, Iter>(
+    frame: &'a Frame,
     candidates: Iter,
     direction: Direction,
-) -> Vec<&'b U>
+) -> Vec<&'b T>
 where
-    &'a T: Into<&'a Frame>,
-    &'b U: Into<&'b Frame>,
-    Iter: Iterator<Item = &'b U>,
+    T: AsRef<Frame>,
+    Iter: Iterator<Item = &'b T>,
 {
     let check_frame_direction = match direction {
         Direction::West => Frame::is_west_of,
@@ -145,13 +187,11 @@ where
         Direction::North | Direction::South => Frame::overlaps_horizontally,
     };
 
-    let main_frame: &Frame = main.into();
-
     candidates
         .filter(|&candidate| {
-            let other_frame: &Frame = candidate.into();
+            let other_frame: &Frame = candidate.as_ref();
 
-            check_frame_direction(other_frame, main_frame) && check_overlap(other_frame, main_frame)
+            check_frame_direction(other_frame, frame) && check_overlap(other_frame, frame)
         })
         .collect()
 }
@@ -247,4 +287,23 @@ where
         .into_iter()
         .map(|(candidate, _)| candidate)
         .next()
+}
+
+fn get_element_to_focus<'a, T>(
+    focused_frame: &Frame,
+    elements: &'a [T],
+    direction: Direction,
+) -> Option<&'a T>
+where
+    T: AsRef<Frame>,
+{
+    let candidates_in_direction =
+        get_candidates_in_direction(focused_frame, elements.iter(), direction);
+
+    find_closest_in_direction(
+        Vector2D::from_frame_center(focused_frame),
+        candidates_in_direction.into_iter(),
+        |window| Vector2D::from_frame_center(window.as_ref()),
+        direction.into(),
+    )
 }
