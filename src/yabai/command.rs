@@ -1,4 +1,4 @@
-use super::transport::{Space, SpaceIndex, Window, WindowId};
+use super::transport::{Display, Space, SpaceIndex, Window, WindowId};
 
 pub trait YabaiCommand {
     type Output;
@@ -103,5 +103,41 @@ impl YabaiCommand for FocusWindowById {
 
     fn parse_output(&self, _output: &str) -> Self::Output {
         ()
+    }
+}
+
+pub struct QuerySpaces;
+
+impl YabaiCommand for QuerySpaces {
+    type Output = Result<Vec<Space>, serde_json::Error>;
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "query".to_string(),
+            "--spaces".to_string(),
+        ]
+    }
+
+    fn parse_output(&self, output: &str) -> Self::Output {
+        serde_json::from_str(output)
+    }
+}
+
+pub struct QueryDisplays;
+
+impl YabaiCommand for QueryDisplays {
+    type Output = Result<Vec<Display>, serde_json::Error>;
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "query".to_string(),
+            "--displays".to_string(),
+        ]
+    }
+
+    fn parse_output(&self, output: &str) -> Self::Output {
+        serde_json::from_str(output)
     }
 }
