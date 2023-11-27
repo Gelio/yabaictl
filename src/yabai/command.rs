@@ -1,4 +1,4 @@
-use super::transport::{Space, SpaceIndex};
+use super::transport::{Space, SpaceIndex, Window, WindowId};
 
 pub trait YabaiCommand {
     type Output;
@@ -30,9 +30,7 @@ impl YabaiCommand for FocusSpaceByIndex {
         ]
     }
 
-    fn parse_output(&self, _output: &str) -> Self::Output {
-        ()
-    }
+    fn parse_output(&self, _output: &str) -> Self::Output {}
 }
 
 pub struct QuerySpaceByIndex {
@@ -60,5 +58,50 @@ impl YabaiCommand for QuerySpaceByIndex {
 
     fn parse_output(&self, output: &str) -> Self::Output {
         serde_json::from_str(output)
+    }
+}
+
+pub struct QueryWindows;
+
+impl YabaiCommand for QueryWindows {
+    type Output = Result<Vec<Window>, serde_json::Error>;
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "query".to_string(),
+            "--windows".to_string(),
+        ]
+    }
+
+    fn parse_output(&self, output: &str) -> Self::Output {
+        serde_json::from_str(output)
+    }
+}
+
+pub struct FocusWindowById {
+    id: WindowId,
+}
+
+impl FocusWindowById {
+    pub fn new(id: WindowId) -> Self {
+        Self { id }
+    }
+}
+
+impl YabaiCommand for FocusWindowById {
+    type Output = ();
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "window".to_string(),
+            "--focus".to_string(),
+            self.id.to_string(),
+        ]
+    }
+
+    fn parse_output(&self, _output: &str) -> Self::Output {
+        ()
     }
 }
