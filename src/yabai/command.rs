@@ -101,9 +101,7 @@ impl YabaiCommand for FocusWindowById {
         ]
     }
 
-    fn parse_output(&self, _output: &str) -> Self::Output {
-        ()
-    }
+    fn parse_output(&self, _output: &str) -> Self::Output {}
 }
 
 pub struct QuerySpaces;

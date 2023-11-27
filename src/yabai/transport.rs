@@ -63,7 +63,7 @@ pub struct SpaceIndex(pub u32);
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct DisplayId(pub u32);
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub struct DisplayIndex(pub u32);
 
 #[derive(Debug, Deserialize, Clone, Copy)]
