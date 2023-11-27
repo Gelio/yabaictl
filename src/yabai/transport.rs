@@ -1,13 +1,55 @@
+use std::ops::Deref;
+
 use serde::{Deserialize, Deserializer};
 
 #[derive(Debug, Deserialize)]
 pub struct Frame {
-    pub x: u32,
-    pub y: u32,
+    pub x: f32,
+    pub y: f32,
     #[serde(rename = "w")]
-    pub width: u32,
+    pub width: f32,
     #[serde(rename = "h")]
-    pub height: u32,
+    pub height: f32,
+}
+
+impl Frame {
+    pub fn is_north_of(&self, other: &Frame) -> bool {
+        self.y + self.height <= other.y
+    }
+
+    pub fn is_south_of(&self, other: &Frame) -> bool {
+        other.is_north_of(self)
+    }
+
+    pub fn is_east_of(&self, other: &Frame) -> bool {
+        self.x >= other.x + other.width
+    }
+
+    pub fn is_west_of(&self, other: &Frame) -> bool {
+        other.is_east_of(self)
+    }
+
+    pub fn overlaps_vertically(&self, other: &Frame) -> bool {
+        let other_starts_north = other.y <= self.y;
+        if other_starts_north {
+            let other_y_end = other.y + other.height;
+            other_y_end >= self.y
+        } else {
+            let y_end = self.y + self.height;
+            other.y <= y_end
+        }
+    }
+
+    pub fn overlaps_horizontally(&self, other: &Frame) -> bool {
+        let other_starts_east = other.x <= self.x;
+        if other_starts_east {
+            let other_x_end = other.x + other.width;
+            other_x_end >= self.x
+        } else {
+            let x_end = self.x + self.width;
+            other.x <= x_end
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
@@ -27,6 +69,14 @@ pub struct DisplayIndex(pub u32);
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct WindowId(pub u32);
 
+impl Deref for WindowId {
+    type Target = u32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Display {
     pub id: DisplayId,
@@ -34,6 +84,12 @@ pub struct Display {
     pub index: DisplayIndex,
     pub frame: Frame,
     pub spaces: Vec<SpaceIndex>,
+}
+
+impl<'a> From<&'a Display> for &'a Frame {
+    fn from(value: &'a Display) -> Self {
+        &value.frame
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,7 +149,7 @@ pub struct Space {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Window {
-    pub id: u32,
+    pub id: WindowId,
     pub pid: u32,
     pub app: String,
     pub title: String,
@@ -109,4 +165,73 @@ pub struct Window {
     pub is_hidden: bool,
     pub is_floating: bool,
     pub is_sticky: bool,
+}
+
+impl<'a> From<&'a Window> for &'a Frame {
+    fn from(value: &'a Window) -> Self {
+        &value.frame
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Frame;
+
+    #[test]
+    fn frame_west_east() {
+        assert!(Frame {
+            x: -100.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0
+        }
+        .is_west_of(&Frame {
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0
+        }));
+
+        assert!(Frame {
+            x: 100.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0
+        }
+        .is_east_of(&Frame {
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0
+        }));
+    }
+
+    #[test]
+    fn frame_north_south() {
+        assert!(Frame {
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0
+        }
+        .is_north_of(&Frame {
+            x: 0.0,
+            y: 150.0,
+            width: 10.0,
+            height: 10.0
+        }));
+
+        assert!(Frame {
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0
+        }
+        .is_south_of(&Frame {
+            x: 0.0,
+            y: -10.0,
+            width: 10.0,
+            height: 10.0
+        }));
+    }
 }
