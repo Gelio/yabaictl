@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use yabaictl::{
     cli::{
         focus_space::focus_space_by_index, focus_window_in_direction::focus_window_in_direction,
+        move_space_in_direction::move_space_in_direction,
     },
     position::Direction,
     yabai::transport::SpaceIndex,
@@ -18,6 +19,7 @@ struct Cli {
 enum Command {
     FocusSpace { index: u32 },
     FocusWindow { direction: Direction },
+    MoveSpace { direction: Direction },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -28,5 +30,6 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::FocusSpace { index } => focus_space_by_index(SpaceIndex(index)),
         Command::FocusWindow { direction } => focus_window_in_direction(direction),
+        Command::MoveSpace { direction } => move_space_in_direction(direction),
     }
 }
