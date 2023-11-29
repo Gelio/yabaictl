@@ -2,7 +2,7 @@ use crate::yabai::transport::Frame;
 
 use super::Direction;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Vector2D {
     pub x: f32,
     pub y: f32,
@@ -75,8 +75,8 @@ where
             let cos = Vector2D::dot(direction, candidate_direction)
                 / (direction.length() * candidate_direction.length());
 
-            if cos.abs() < f32::EPSILON {
-                // This candidate is almost perpendicular to the direction_vector
+            // Make sure the candidate is noticeably in the right direction
+            if cos < f32::EPSILON {
                 None
             } else {
                 let score = candidate_direction.length() / cos;
@@ -122,4 +122,75 @@ where
             check_frame_direction(other_frame, frame) && check_overlap(other_frame, frame)
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn filter_candidates_in_direction() {
+        let frames = vec![
+            Frame {
+                x: 100.0,
+                y: 0.0,
+                width: 100.0,
+                height: 100.0,
+            },
+            Frame {
+                x: 200.0,
+                y: 0.0,
+                width: 100.0,
+                height: 100.0,
+            },
+            Frame {
+                x: 0.0,
+                y: 100.0,
+                width: 100.0,
+                height: 100.0,
+            },
+            Frame {
+                x: 100.0,
+                y: -100.0,
+                width: 100.0,
+                height: 100.0,
+            },
+        ];
+
+        let main_frame = Frame {
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0,
+        };
+
+        let candidates = get_candidates_in_direction(&main_frame, frames.iter(), Direction::East);
+        assert_eq!(candidates[0], &frames[0]);
+        assert_eq!(candidates[1], &frames[1]);
+        assert_eq!(candidates.len(), 2);
+    }
+
+    #[test]
+    fn find_closest() {
+        let closest_vector = Vector2D { x: 1.0, y: 0.0 };
+
+        let candidates = vec![
+            Vector2D { x: 5.0, y: 2.0 },
+            Vector2D { x: 17.2, y: 1.0 },
+            closest_vector.clone(),
+            Vector2D { x: 0.1, y: 10.0 },
+            Vector2D { x: -0.1, y: -1.0 },
+        ];
+
+        let center = Vector2D { x: 0.0, y: 0.0 };
+
+        let found_closest_vector = find_closest_in_direction(
+            center,
+            candidates.iter(),
+            |&&vector| vector,
+            Direction::East.into(),
+        );
+
+        assert_eq!(Some(&closest_vector), found_closest_vector);
+    }
 }

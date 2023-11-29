@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use serde::{Deserialize, Deserializer};
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 pub struct Frame {
     pub x: f32,
     pub y: f32,
