@@ -33,10 +33,10 @@ impl Frame {
         let other_starts_north = other.y <= self.y;
         if other_starts_north {
             let other_y_end = other.y + other.height;
-            other_y_end >= self.y
+            other_y_end > self.y
         } else {
             let y_end = self.y + self.height;
-            other.y <= y_end
+            other.y < y_end
         }
     }
 
@@ -44,11 +44,17 @@ impl Frame {
         let other_starts_east = other.x <= self.x;
         if other_starts_east {
             let other_x_end = other.x + other.width;
-            other_x_end >= self.x
+            other_x_end > self.x
         } else {
             let x_end = self.x + self.width;
-            other.x <= x_end
+            other.x < x_end
         }
+    }
+}
+
+impl AsRef<Frame> for Frame {
+    fn as_ref(&self) -> &Frame {
+        self
     }
 }
 
