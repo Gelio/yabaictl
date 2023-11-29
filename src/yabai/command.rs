@@ -1,4 +1,4 @@
-use super::transport::{Display, Space, SpaceIndex, Window, WindowId};
+use super::transport::{Display, DisplayIndex, Space, SpaceIndex, Window, WindowId};
 
 pub trait YabaiCommand {
     type Output;
@@ -138,4 +138,34 @@ impl YabaiCommand for QueryDisplays {
     fn parse_output(&self, output: &str) -> Self::Output {
         serde_json::from_str(output)
     }
+}
+
+pub struct SendSpaceToDisplay {
+    space_index: SpaceIndex,
+    display_index: DisplayIndex,
+}
+
+impl SendSpaceToDisplay {
+    pub fn new(space_index: SpaceIndex, display_index: DisplayIndex) -> Self {
+        Self {
+            space_index,
+            display_index,
+        }
+    }
+}
+
+impl YabaiCommand for SendSpaceToDisplay {
+    type Output = ();
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "space".to_string(),
+            self.space_index.to_string(),
+            "--display".to_string(),
+            self.display_index.to_string(),
+        ]
+    }
+
+    fn parse_output(&self, _output: &str) -> Self::Output {}
 }

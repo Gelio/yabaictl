@@ -60,11 +60,27 @@ pub struct SpaceId(pub u32);
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct SpaceIndex(pub u32);
 
+impl Deref for SpaceIndex {
+    type Target = u32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct DisplayId(pub u32);
 
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub struct DisplayIndex(pub u32);
+
+impl Deref for DisplayIndex {
+    type Target = u32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct WindowId(pub u32);
