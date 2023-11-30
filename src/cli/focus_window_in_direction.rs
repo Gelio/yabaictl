@@ -123,9 +123,11 @@ fn find_active_ui_element(windows: &[Window]) -> anyhow::Result<ActiveUIElement>
 }
 
 fn get_spaces() -> anyhow::Result<Vec<Space>> {
-    execute_yabai_cmd(&QuerySpaces)
-        .context("Could not query spaces")?
-        .context("Could not parse spaces")
+    execute_yabai_cmd(&QuerySpaces {
+        only_current_display: false,
+    })
+    .context("Could not query spaces")?
+    .context("Could not parse spaces")
 }
 
 fn get_displays() -> anyhow::Result<Vec<Display>> {

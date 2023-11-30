@@ -10,9 +10,11 @@ use crate::{
 };
 
 pub fn move_space_in_direction(direction: Direction) -> anyhow::Result<()> {
-    let spaces = execute_yabai_cmd(&QuerySpaces)
-        .context("Could not query spaces")?
-        .context("Could not parse spaces")?;
+    let spaces = execute_yabai_cmd(&QuerySpaces {
+        only_current_display: false,
+    })
+    .context("Could not query spaces")?
+    .context("Could not parse spaces")?;
 
     let displays = execute_yabai_cmd(&QueryDisplays)
         .context("Could not query displays")?

@@ -1,7 +1,8 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use yabaictl::{
     cli::{
-        focus_space::focus_space_by_index, focus_window_in_direction::focus_window_in_direction,
+        focus_space::{focus_next_or_previous_space, focus_space_by_index, NextOrPrevious},
+        focus_window_in_direction::focus_window_in_direction,
         move_space_in_direction::move_space_in_direction,
     },
     position::Direction,
@@ -15,9 +16,18 @@ struct Cli {
     command: Command,
 }
 
+#[derive(Args)]
+#[group(required = true, multiple = false)]
+struct SpaceSpecifier {
+    next_or_previous: Option<NextOrPrevious>,
+
+    #[arg(long = "index")]
+    index: Option<u32>,
+}
+
 #[derive(Subcommand)]
 enum Command {
-    FocusSpace { index: u32 },
+    FocusSpace(SpaceSpecifier),
     FocusWindow { direction: Direction },
     MoveSpace { direction: Direction },
 }
@@ -28,7 +38,15 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::FocusSpace { index } => focus_space_by_index(SpaceIndex(index)),
+        Command::FocusSpace(space_specifier) => {
+            if let Some(index) = space_specifier.index {
+                focus_space_by_index(SpaceIndex(index))
+            } else if let Some(next_or_previous) = space_specifier.next_or_previous {
+                focus_next_or_previous_space(next_or_previous)
+            } else {
+                unreachable!("Some space specifier is required");
+            }
+        }
         Command::FocusWindow { direction } => focus_window_in_direction(direction),
         Command::MoveSpace { direction } => move_space_in_direction(direction),
     }

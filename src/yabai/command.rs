@@ -104,17 +104,25 @@ impl YabaiCommand for FocusWindowById {
     fn parse_output(&self, _output: &str) -> Self::Output {}
 }
 
-pub struct QuerySpaces;
+pub struct QuerySpaces {
+    pub only_current_display: bool,
+}
 
 impl YabaiCommand for QuerySpaces {
     type Output = Result<Vec<Space>, serde_json::Error>;
 
     fn to_args(&self) -> Vec<String> {
-        vec![
+        let mut args = vec![
             "-m".to_string(),
             "query".to_string(),
             "--spaces".to_string(),
-        ]
+        ];
+
+        if self.only_current_display {
+            args.push("--display".to_string());
+        }
+
+        args
     }
 
     fn parse_output(&self, output: &str) -> Self::Output {
