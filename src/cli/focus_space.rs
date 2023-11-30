@@ -61,3 +61,43 @@ pub fn focus_next_or_previous_space(next_or_previous: NextOrPrevious) -> anyhow:
     execute_yabai_cmd(&FocusSpaceByIndex::new(space_to_focus.index))
         .with_context(|| format!("Could not focus space {}", *space_to_focus.index))
 }
+
+pub fn focus_space_by_label(label_prefix: &str) -> anyhow::Result<()> {
+    let spaces = execute_yabai_cmd(&QuerySpaces {
+        only_current_display: false,
+    })
+    .context("Could not get spaes in the current display")?
+    .context("Could not parse spaces")?;
+
+    let spaces_with_prefix: Vec<_> = spaces
+        .into_iter()
+        .filter_map(|space| match space.label.as_ref() {
+            Some(label) if label.starts_with(label_prefix) => {
+                let label = label.clone();
+                Some((space, label))
+            }
+            _ => None,
+        })
+        .collect();
+
+    match spaces_with_prefix.len() {
+        0 => anyhow::bail!("No spaces found with prefix {label_prefix}"),
+        2.. => anyhow::bail!(
+            "More than one space found with prefix {label_prefix}: {matching_spaces_labels:?}",
+            matching_spaces_labels = spaces_with_prefix
+                .into_iter()
+                .map(|(_, label)| label)
+                .collect::<Vec<_>>()
+        ),
+        _ => {}
+    }
+
+    let (space_to_focus, space_label_to_focus) = spaces_with_prefix
+        .into_iter()
+        .next()
+        .expect("There is only one element in the vector");
+
+    info!("Focusing space {}", space_label_to_focus);
+    execute_yabai_cmd(&FocusSpaceByIndex::new(space_to_focus.index))
+        .with_context(|| format!("Cannot focus space with index {}", *space_to_focus.index))
+}

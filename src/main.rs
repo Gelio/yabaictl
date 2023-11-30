@@ -1,7 +1,10 @@
 use clap::{Args, Parser, Subcommand};
 use yabaictl::{
     cli::{
-        focus_space::{focus_next_or_previous_space, focus_space_by_index, NextOrPrevious},
+        focus_space::{
+            focus_next_or_previous_space, focus_space_by_index, focus_space_by_label,
+            NextOrPrevious,
+        },
         focus_window_in_direction::focus_window_in_direction,
         move_space_in_direction::move_space_in_direction,
     },
@@ -23,6 +26,9 @@ struct SpaceSpecifier {
 
     #[arg(long = "index")]
     index: Option<u32>,
+
+    #[arg(long = "label")]
+    label_prefix: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -43,6 +49,8 @@ fn main() -> anyhow::Result<()> {
                 focus_space_by_index(SpaceIndex(index))
             } else if let Some(next_or_previous) = space_specifier.next_or_previous {
                 focus_next_or_previous_space(next_or_previous)
+            } else if let Some(label_prefix) = space_specifier.label_prefix {
+                focus_space_by_label(&label_prefix)
             } else {
                 unreachable!("Some space specifier is required");
             }
