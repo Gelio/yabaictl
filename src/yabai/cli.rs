@@ -13,14 +13,21 @@ pub enum YabaiCommandExecError {
     #[error("process terminated by a signal")]
     ProcessTerminatedBySignal,
 
-    #[error("process exited with a non-zero status code: {code}")]
-    ExitCode { code: i32, stdout: String },
+    #[error(
+        "process exited with a non-zero status code: {code}\nstdout: {stdout}\nstderr: {stderr}"
+    )]
+    ExitCode {
+        code: i32,
+        stdout: String,
+        stderr: String,
+    },
 
     #[error("command output is not valid UTF-8")]
     FromUTF8(#[from] FromUtf8Error),
 }
 
 pub fn execute_yabai_cmd<C: YabaiCommand>(
+    // TODO: AsRef instead of &C so we can pass both references and owned types
     yabai_cmd: &C,
 ) -> Result<C::Output, YabaiCommandExecError> {
     let args = yabai_cmd.to_args();
@@ -31,11 +38,14 @@ pub fn execute_yabai_cmd<C: YabaiCommand>(
 
     if !output.status.success() {
         return Err(match output.status.code() {
-            Some(code) => YabaiCommandExecError::ExitCode { code, stdout },
+            Some(code) => YabaiCommandExecError::ExitCode {
+                code,
+                stdout,
+                stderr: String::from_utf8(output.stderr).expect("Cannot parse stderr as utf8"),
+            },
             None => YabaiCommandExecError::ProcessTerminatedBySignal,
         });
     }
 
     Ok(yabai_cmd.parse_output(&stdout))
 }
-
