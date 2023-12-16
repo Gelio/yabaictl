@@ -3,8 +3,10 @@ use super::transport::{Display, DisplayIndex, Space, SpaceIndex, Window, WindowI
 pub trait YabaiCommand {
     type Output;
 
+    // TODO: rename to `into_args` and consume self
     fn to_args(&self) -> Vec<String>;
 
+    // TODO: remove &self
     fn parse_output(&self, output: &str) -> Self::Output;
 }
 
@@ -172,6 +174,33 @@ impl YabaiCommand for SendSpaceToDisplay {
             self.space_index.to_string(),
             "--display".to_string(),
             self.display_index.to_string(),
+        ]
+    }
+
+    fn parse_output(&self, _output: &str) -> Self::Output {}
+}
+
+pub struct LabelSpace {
+    index: SpaceIndex,
+    label: String,
+}
+
+impl LabelSpace {
+    pub fn new(index: SpaceIndex, label: String) -> Self {
+        Self { index, label }
+    }
+}
+
+impl YabaiCommand for LabelSpace {
+    type Output = ();
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "space".to_string(),
+            self.index.to_string(),
+            "--label".to_string(),
+            self.label.clone(),
         ]
     }
 
