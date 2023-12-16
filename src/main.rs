@@ -6,6 +6,7 @@ use yabaictl::{
             NextOrPrevious,
         },
         focus_window_in_direction::focus_window_in_direction,
+        label_spaces::label_spaces,
         move_space_in_direction::move_space_in_direction,
     },
     position::Direction,
@@ -36,6 +37,7 @@ enum Command {
     FocusSpace(SpaceSpecifier),
     FocusWindow { direction: Direction },
     MoveSpace { direction: Direction },
+    LabelSpaces,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -57,5 +59,6 @@ fn main() -> anyhow::Result<()> {
         }
         Command::FocusWindow { direction } => focus_window_in_direction(direction),
         Command::MoveSpace { direction } => move_space_in_direction(direction),
+        Command::LabelSpaces => label_spaces(),
     }
 }
