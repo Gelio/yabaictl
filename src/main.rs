@@ -42,6 +42,10 @@ enum Command {
     FocusWindow { direction: Direction },
     MoveSpace { direction: Direction },
     LabelSpaces,
+    // TODO: reorder spaces according to labels
+    // TODO: change space yabai label (stable_index + some label)
+    // TODO: warp (move) window in a given direction
+    // TODO: move window to a space using stable_index
 }
 
 fn main() -> anyhow::Result<()> {
