@@ -1,11 +1,11 @@
-use std::iter::zip;
+use std::{iter::zip, usize};
 
 use super::Labelable;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct PartitionedLabelables<T: Labelable> {
     incorrectly_labeled: Vec<(T, T::ParseIndexError)>,
-    unused_indexes: Vec<u32>,
+    unused_indexes: Vec<T::Index>,
     items_to_label: Vec<T>,
 }
 
@@ -14,18 +14,18 @@ impl<T: Labelable> PartitionedLabelables<T> {
         &self.incorrectly_labeled
     }
 
-    pub fn into_assigned_indices(self) -> AssignedIndices<T> {
+    pub fn into_assigned_indices(self) -> AssignedIndices<T, T::Index> {
         self.into()
     }
 }
 
-pub fn partition_labelables<T, const MAX_INDEX: usize>(
-    labelables: impl Iterator<Item = T>,
-) -> PartitionedLabelables<T>
+pub fn partition_labelables<T>(labelables: impl Iterator<Item = T>) -> PartitionedLabelables<T>
 where
     T: Labelable,
+    <<T as Labelable>::Index as TryFrom<u32>>::Error: std::fmt::Debug,
 {
-    let mut index_used = [false; MAX_INDEX];
+    // NOTE: cannot use an array because cannot add 1 to a const generic without a nightly flag
+    let mut index_used: Vec<bool> = vec![false; *T::INDEX_RANGE.end() as usize + 1];
 
     let mut items_with_invalid_labels: Vec<(T, T::ParseIndexError)> = Vec::new();
 
@@ -36,7 +36,7 @@ where
         if let Some(label) = item.label() {
             match T::parse_index(label) {
                 Ok(index) => {
-                    index_used[index as usize] = true;
+                    index_used[index.into() as usize] = true;
                 }
                 Err(error) => {
                     items_with_invalid_labels.push((item, error));
@@ -45,12 +45,18 @@ where
         }
     }
 
-    let unused_indexes: Vec<_> = index_used
-        .into_iter()
-        .enumerate()
-        // NOTE: skips the 0th index
-        .skip(1)
-        .filter_map(|(index, used)| if used { None } else { Some(index as u32) })
+    let unused_indexes: Vec<_> = T::INDEX_RANGE
+        .filter_map(|index| {
+            if index_used[index as usize] {
+                None
+            } else {
+                Some(
+                    index
+                        .try_into()
+                        .expect("Cannot convert an unused index to labelable index"),
+                )
+            }
+        })
         .collect();
 
     PartitionedLabelables {
@@ -61,13 +67,13 @@ where
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct AssignedIndices<T> {
-    pub assigned_indices: Vec<(T, u32)>,
+pub struct AssignedIndices<T, Index> {
+    pub assigned_indices: Vec<(T, Index)>,
     /// Items that could not be labeled because there are not enough labels.
     pub leftover_items: Vec<T>,
 }
 
-impl<T: Labelable> From<PartitionedLabelables<T>> for AssignedIndices<T> {
+impl<T: Labelable> From<PartitionedLabelables<T>> for AssignedIndices<T, T::Index> {
     fn from(value: PartitionedLabelables<T>) -> Self {
         let mut items_to_label = value.items_to_label;
 
@@ -89,13 +95,15 @@ mod tests {
     struct LabelableItem(u32, Option<String>);
 
     impl Labelable for LabelableItem {
+        const INDEX_RANGE: std::ops::RangeInclusive<u32> = 1..=6;
+        type Index = u32;
         type ParseIndexError = ParseIntError;
 
         fn label(&self) -> Option<&str> {
             self.1.as_deref()
         }
 
-        fn parse_index(label: &str) -> Result<u32, Self::ParseIndexError> {
+        fn parse_index(label: &str) -> Result<Self::Index, Self::ParseIndexError> {
             label.parse()
         }
     }
@@ -110,12 +118,12 @@ mod tests {
             LabelableItem(5, Some("invalid one".to_owned())),
         ];
 
-        let result = partition_labelables::<_, 7>(items.into_iter());
+        let result = partition_labelables(items.into_iter());
         assert_eq!(
             vec![LabelableItem(3, None), LabelableItem(4, None)],
             result.items_to_label,
         );
-        assert_eq!(vec![3, 4, 5, 6], result.unused_indexes,);
+        assert_eq!(vec![3, 4, 5, 6], result.unused_indexes);
         assert_eq!(1, result.incorrectly_labeled.len());
         assert_eq!(
             result.incorrectly_labeled[0].0,

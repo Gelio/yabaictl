@@ -1,18 +1,9 @@
-use std::num::ParseIntError;
-
-use anyhow::Context;
-use log::{debug, info, warn};
-use thiserror::Error;
-
 use crate::{
-    label::{partition::partition_labelables, Labelable},
+    label::partition::partition_labelables,
     yabai::{self, cli::execute_yabai_cmd, command::QuerySpaces, transport::Space},
 };
-
-const SUPPORTED_LABELED_SPACES: usize = 10;
-
-/// One-based
-const MAX_SPACE_INDEX: usize = SUPPORTED_LABELED_SPACES + 1;
+use anyhow::Context;
+use log::{debug, info, warn};
 
 pub fn label_spaces() -> anyhow::Result<()> {
     let spaces = execute_yabai_cmd(&QuerySpaces {
@@ -21,7 +12,7 @@ pub fn label_spaces() -> anyhow::Result<()> {
     .context("Could not query spaces")?
     .context("Could not parse spaces")?;
 
-    let partitioned_spaces = partition_labelables::<_, MAX_SPACE_INDEX>(spaces.into_iter());
+    let partitioned_spaces = partition_labelables(spaces.into_iter());
 
     let incorrectly_labeled_spaces = partitioned_spaces.incorrectly_labeled();
     if !incorrectly_labeled_spaces.is_empty() {
@@ -29,7 +20,7 @@ pub fn label_spaces() -> anyhow::Result<()> {
             "Detected {len} spaces with incorrect labels: {labels:#?}",
             len = incorrectly_labeled_spaces.len(),
             labels = incorrectly_labeled_spaces
-                .into_iter()
+                .iter()
                 .map(|(space, error)| (
                     space
                         .label
@@ -73,74 +64,4 @@ pub fn label_spaces() -> anyhow::Result<()> {
 
     info!("Labeled {spaces_to_label_len} spaces");
     Ok(())
-}
-
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum InvalidSpaceLabelIndexError {
-    #[error("Colon is missing in the label")]
-    MissingColon,
-
-    #[error("Cannot parse index from label")]
-    ParseIndexError(#[from] ParseIntError),
-
-    #[error("Space index {label_index} too high, exceeds {SUPPORTED_LABELED_SPACES}")]
-    IndexTooHigh { label_index: u32 },
-}
-
-impl Labelable for Space {
-    type ParseIndexError = InvalidSpaceLabelIndexError;
-
-    fn label(&self) -> Option<&str> {
-        self.label.as_deref()
-    }
-
-    fn parse_index(label: &str) -> Result<u32, Self::ParseIndexError> {
-        let stringified_label_index = match label.find(':') {
-            Some(colon_index) => &label[0..colon_index],
-            // ASSUMPTION: label must start with a number
-            None => label,
-        };
-
-        let label_index = stringified_label_index.parse()?;
-
-        if label_index > SUPPORTED_LABELED_SPACES as u32 {
-            Err(InvalidSpaceLabelIndexError::IndexTooHigh { label_index })
-        } else {
-            Ok(label_index)
-        }
-    }
-}
-
-impl Space {
-    fn label(index: u32, extra_label: Option<String>) -> String {
-        let suffix = match extra_label {
-            Some(extra_label) => format!(" {extra_label}"),
-            None => String::new(),
-        };
-
-        format!("{index}:{suffix}",)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn gets_space_index_from_label() {
-        assert_eq!(Ok(1), Space::parse_index("1"));
-        assert_eq!(Ok(10), Space::parse_index("10: hello"));
-
-        assert!(matches!(
-            Space::parse_index("hello"),
-            Err(InvalidSpaceLabelIndexError::ParseIndexError(..))
-        ));
-
-        assert_eq!(
-            Err(InvalidSpaceLabelIndexError::IndexTooHigh {
-                label_index: SUPPORTED_LABELED_SPACES as u32 + 1
-            }),
-            Space::parse_index(&(SUPPORTED_LABELED_SPACES + 1).to_string()),
-        );
-    }
 }
