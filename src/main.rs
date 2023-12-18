@@ -9,8 +9,9 @@ use yabaictl::{
         label_spaces::label_spaces,
         move_space_in_direction::move_space_in_direction,
     },
+    label::space::StableSpaceIndex,
     position::Direction,
-    yabai::transport::SpaceIndex,
+    yabai::transport::{Space, SpaceIndex},
 };
 
 #[derive(Parser)]
@@ -30,6 +31,9 @@ struct SpaceSpecifier {
 
     #[arg(long = "label")]
     label_prefix: Option<String>,
+
+    #[arg(long = "stable-index")]
+    stable_index: Option<StableSpaceIndex>,
 }
 
 #[derive(Subcommand)]
@@ -52,6 +56,9 @@ fn main() -> anyhow::Result<()> {
             } else if let Some(next_or_previous) = space_specifier.next_or_previous {
                 focus_next_or_previous_space(next_or_previous)
             } else if let Some(label_prefix) = space_specifier.label_prefix {
+                focus_space_by_label(&label_prefix)
+            } else if let Some(stable_index) = space_specifier.stable_index {
+                let label_prefix = Space::label(stable_index, None);
                 focus_space_by_label(&label_prefix)
             } else {
                 unreachable!("Some space specifier is required");

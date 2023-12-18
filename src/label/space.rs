@@ -11,7 +11,7 @@ const SUPPORTED_STABLE_INDEXES: std::ops::RangeInclusive<u32> = 1..=10;
 /// Space index that remains stable when the space moves across displays or is reordered.
 ///
 /// Stable space index is enforced in yabai by using it as a prefix of the space label.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct StableSpaceIndex(u32);
 
 impl Deref for StableSpaceIndex {
