@@ -8,6 +8,7 @@ use yabaictl::{
         focus_window_in_direction::focus_window_in_direction,
         label_spaces::label_spaces,
         move_space_in_direction::move_space_in_direction,
+        reorder::reorder_spaces_by_stable_indexes,
     },
     label::space::StableSpaceIndex,
     position::Direction,
@@ -42,7 +43,7 @@ enum Command {
     FocusWindow { direction: Direction },
     MoveSpace { direction: Direction },
     LabelSpaces,
-    // TODO: reorder spaces according to labels
+    ReorderByStableIndexes,
     // TODO: change space yabai label (stable_index + some label)
     // TODO: warp (move) window in a given direction
     // TODO: move window to a space using stable_index
@@ -71,5 +72,6 @@ fn main() -> anyhow::Result<()> {
         Command::FocusWindow { direction } => focus_window_in_direction(direction),
         Command::MoveSpace { direction } => move_space_in_direction(direction),
         Command::LabelSpaces => label_spaces(),
+        Command::ReorderByStableIndexes => reorder_spaces_by_stable_indexes(),
     }
 }
