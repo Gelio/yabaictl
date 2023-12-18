@@ -6,7 +6,7 @@ use crate::yabai::transport::Space;
 
 use super::Labelable;
 
-pub const SUPPORTED_LABELED_SPACES: u32 = 10;
+const SUPPORTED_STABLE_INDEXES: std::ops::RangeInclusive<u32> = 1..=10;
 
 /// Space index that remains stable when the space moves across displays or is reordered.
 ///
@@ -33,16 +33,16 @@ pub enum ParseStableSpaceIndexError {
     #[error("Cannot parse integer")]
     ParseIntError(#[from] ParseIntError),
 
-    #[error("Number exceeds max supported stable index {SUPPORTED_LABELED_SPACES}")]
-    ExceedsMaxSupportedStableIndex,
+    #[error("Number must be within the range [{}, {}]", SUPPORTED_STABLE_INDEXES.start(), SUPPORTED_STABLE_INDEXES.end())]
+    OutOfBounds,
 }
 
 impl TryFrom<u32> for StableSpaceIndex {
     type Error = ParseStableSpaceIndexError;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        if value > SUPPORTED_LABELED_SPACES {
-            Err(Self::Error::ExceedsMaxSupportedStableIndex)
+        if !SUPPORTED_STABLE_INDEXES.contains(&value) {
+            Err(Self::Error::OutOfBounds)
         } else {
             Ok(Self(value))
         }
@@ -76,7 +76,7 @@ pub enum ParseSpaceLabelError {
 }
 
 impl Labelable for Space {
-    const INDEX_RANGE: std::ops::RangeInclusive<u32> = 1..=SUPPORTED_LABELED_SPACES;
+    const INDEX_RANGE: std::ops::RangeInclusive<u32> = SUPPORTED_STABLE_INDEXES;
 
     type Index = StableSpaceIndex;
     type ParseIndexError = ParseSpaceLabelError;
@@ -145,7 +145,7 @@ mod tests {
         ));
 
         {
-            let mut label = (SUPPORTED_LABELED_SPACES + 1).to_string();
+            let mut label = (SUPPORTED_STABLE_INDEXES.end() + 1).to_string();
             let stable_index_exceeding_max = label.clone();
 
             label.push_str(": hello");
@@ -153,7 +153,7 @@ mod tests {
             assert_eq!(
                 Err(ParseSpaceLabelError::ParseStableIndexError {
                     prefix: stable_index_exceeding_max,
-                    cause: ParseStableSpaceIndexError::ExceedsMaxSupportedStableIndex
+                    cause: ParseStableSpaceIndexError::OutOfBounds
                 }),
                 Space::parse_index(&label),
             );
