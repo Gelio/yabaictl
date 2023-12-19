@@ -9,6 +9,7 @@ use yabaictl::{
         label_spaces::label_spaces,
         move_space_in_direction::move_space_in_direction,
         reorder::reorder_spaces_by_stable_indexes,
+        set_space_label::{set_space_label, SetSpaceLabelArgs},
     },
     label::space::StableSpaceIndex,
     position::Direction,
@@ -44,7 +45,7 @@ enum Command {
     MoveSpace { direction: Direction },
     LabelSpaces,
     ReorderByStableIndexes,
-    // TODO: change space yabai label (stable_index + some label)
+    SetLabel(SetSpaceLabelArgs),
     // TODO: warp (move) window in a given direction
     // TODO: move window to a space using stable_index
 }
@@ -73,5 +74,6 @@ fn main() -> anyhow::Result<()> {
         Command::MoveSpace { direction } => move_space_in_direction(direction),
         Command::LabelSpaces => label_spaces(),
         Command::ReorderByStableIndexes => reorder_spaces_by_stable_indexes(),
+        Command::SetLabel(args) => set_space_label(args),
     }
 }
