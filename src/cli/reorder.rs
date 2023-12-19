@@ -13,14 +13,14 @@ pub fn reorder_spaces_by_stable_indexes() -> anyhow::Result<()> {
     .context("Cannot query yabai spaces")?
     .context("Cannot parse yabai spaces")?;
 
-    let (space_index_parsing_errors, spaces_with_stable_indices): (Vec<_>, Vec<_>) = spaces
+    let (spaces_with_stable_indices, space_index_parsing_errors): (Vec<_>, Vec<_>) = spaces
         .into_iter()
         .filter_map(|space| {
             let stable_index = Space::parse_index(space.label.as_deref()?);
 
             Some(stable_index.map(|stable_index| (space, stable_index)))
         })
-        .partition_map(Into::into);
+        .partition_result();
     anyhow::ensure!(
         space_index_parsing_errors.is_empty(),
         "Spaces stable index cannot be parsed: {space_index_parsing_errors:?}",
