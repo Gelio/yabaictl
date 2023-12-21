@@ -1,6 +1,6 @@
 use std::{io, process::Command, string::FromUtf8Error};
 
-use log::trace;
+use log::{debug, trace};
 use thiserror::Error;
 
 use super::command::YabaiCommand;
@@ -31,7 +31,7 @@ pub fn execute_yabai_cmd<C: YabaiCommand>(
     yabai_cmd: &C,
 ) -> Result<C::Output, YabaiCommandExecError> {
     let args = yabai_cmd.to_args();
-    trace!("Invoking yabai with args: {args:?}");
+    debug!("Invoking yabai with args: {args:?}");
     let output = Command::new("yabai").args(args).output()?;
     let stdout = String::from_utf8(output.stdout)?;
     trace!("yabai command stdout: {stdout}");
