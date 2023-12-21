@@ -13,12 +13,22 @@ pub fn reorder_spaces_by_stable_indexes() -> anyhow::Result<()> {
     .context("Cannot query yabai spaces")?
     .context("Cannot parse yabai spaces")?;
 
-    let (spaces_with_stable_indices, space_index_parsing_errors): (Vec<_>, Vec<_>) = spaces
+    let (labeled_spaces, space_index_parsing_errors): (Vec<_>, Vec<_>) = spaces
         .into_iter()
         .filter_map(|space| {
-            let stable_index = Space::parse_index(space.label.as_deref()?);
+            let label = space.label.as_deref()?;
+            let stable_index = Space::parse_index(label);
 
-            Some(stable_index.map(|stable_index| (space, stable_index)))
+            let label = label.to_owned();
+            Some(stable_index.map(|stable_index| {
+                (
+                    space,
+                    LabeledSpace {
+                        label,
+                        stable_index,
+                    },
+                )
+            }))
         })
         .partition_result();
     anyhow::ensure!(
@@ -26,26 +36,50 @@ pub fn reorder_spaces_by_stable_indexes() -> anyhow::Result<()> {
         "Spaces stable index cannot be parsed: {space_index_parsing_errors:?}",
     );
 
-    let spaces_by_display = spaces_with_stable_indices
+    let spaces_by_display = labeled_spaces
         .into_iter()
         .group_by(|(space, _)| space.display_index);
 
     for (_, spaces) in spaces_by_display.into_iter() {
-        let stable_indexes: Vec<_> = spaces.map(|(_, stable_index)| stable_index).collect();
-        let move_list = generate_move_list(&stable_indexes);
+        let labeled_spaces: Vec<_> = spaces.map(|(_, labeled_spaces)| labeled_spaces).collect();
+        let move_list = generate_move_list(&labeled_spaces);
 
         for m in move_list {
             let move_command: yabai::command::MoveSpace = m.into();
             execute_yabai_cmd(&move_command).with_context(|| {
                 format!(
                     "Cannot move space {:?} before space {:?}",
-                    move_command.source_index, move_command.target_index
+                    move_command.source_label, move_command.target_label
                 )
             })?;
         }
     }
 
     Ok(())
+}
+
+#[derive(Clone, Eq)]
+struct LabeledSpace {
+    stable_index: StableSpaceIndex,
+    label: String,
+}
+
+impl PartialEq for LabeledSpace {
+    fn eq(&self, other: &Self) -> bool {
+        self.stable_index.eq(&other.stable_index)
+    }
+}
+
+impl PartialOrd for LabeledSpace {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for LabeledSpace {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.stable_index.cmp(&other.stable_index)
+    }
 }
 
 /// An instruction to move `source` BEFORE `target`.
@@ -55,11 +89,11 @@ struct Move<Item> {
     target: Item,
 }
 
-impl From<Move<StableSpaceIndex>> for yabai::command::MoveSpace {
-    fn from(value: Move<StableSpaceIndex>) -> Self {
+impl From<Move<LabeledSpace>> for yabai::command::MoveSpace {
+    fn from(value: Move<LabeledSpace>) -> Self {
         Self {
-            source_index: value.source,
-            target_index: value.target,
+            source_label: value.source.label,
+            target_label: value.target.label,
         }
     }
 }

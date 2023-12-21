@@ -1,5 +1,3 @@
-use crate::label::space::StableSpaceIndex;
-
 use super::transport::{Display, DisplayIndex, Space, SpaceIndex, Window, WindowId};
 
 pub trait YabaiCommand {
@@ -210,8 +208,8 @@ impl YabaiCommand for LabelSpace {
 }
 
 pub struct MoveSpace {
-    pub source_index: StableSpaceIndex,
-    pub target_index: StableSpaceIndex,
+    pub source_label: String,
+    pub target_label: String,
 }
 
 impl YabaiCommand for MoveSpace {
@@ -221,9 +219,9 @@ impl YabaiCommand for MoveSpace {
         vec![
             "-m".to_string(),
             "space".to_string(),
-            Space::label(self.source_index, None),
+            self.source_label.clone(),
             "--move".to_string(),
-            Space::label(self.target_index, None),
+            self.target_label.clone(),
         ]
     }
 
