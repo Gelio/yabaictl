@@ -71,9 +71,13 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Command::FocusWindow { direction } => focus_window_in_direction(direction),
-        Command::MoveSpace { direction } => move_space_in_direction(direction),
-        Command::LabelSpaces => label_spaces(),
+        Command::MoveSpace { direction } => {
+            move_space_in_direction(direction).and_then(|_| reorder_spaces_by_stable_indexes())
+        }
+        Command::LabelSpaces => label_spaces().and_then(|_| reorder_spaces_by_stable_indexes()),
         Command::ReorderByStableIndexes => reorder_spaces_by_stable_indexes(),
-        Command::SetLabel(args) => set_space_label(args),
+        Command::SetLabel(args) => {
+            set_space_label(args).and_then(|_| reorder_spaces_by_stable_indexes())
+        }
     }
 }
