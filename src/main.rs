@@ -18,7 +18,7 @@ use yabaictl::{
 };
 
 #[derive(Parser)]
-#[command(author, version)]
+#[command(author, about, version)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -27,8 +27,11 @@ struct Cli {
 #[derive(Args, Clone)]
 #[group(required = true, multiple = false)]
 struct SpaceSpecifier {
+    /// Next or previous space based on the active one.
+    /// Wraps within the display.
     next_or_previous: Option<NextOrPrevious>,
 
+    /// Prefix for the label. It could be the full label itself.
     #[arg(long)]
     label_prefix: Option<String>,
 
@@ -38,29 +41,43 @@ struct SpaceSpecifier {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Focuses a space.
     FocusSpace {
         #[command(flatten)]
         space_specifier: SpaceSpecifier,
 
+        /// If the target space does not exist, it will be created before focusing it.
+        /// The space will belong to the currently active display.
         #[arg(long, default_value_t = false)]
         create_if_not_found: bool,
 
+        /// Spaces with 0 windows that are in the background (not visible) are going
+        /// to be removed.
+        ///
+        /// This helps manage the spaces, since unused spaces won't take up slots on displays.
+        ///
+        /// Useful with the `create_if_not_found` option.
         #[arg(long, default_value_t = false)]
         destroy_empty_background_spaces: bool,
     },
-    FocusWindow {
-        direction: Direction,
-    },
-    MoveSpace {
-        direction: Direction,
-    },
+    /// Focuses a window in a given direction based on the active window.
+    /// Works across displays.
+    FocusWindow { direction: Direction },
+    /// Move the active space in a given direction across displays.
+    MoveSpace { direction: Direction },
+    /// Assigns stable indexes to spaces using labels.
     LabelSpaces,
+    /// Reorders spaces using their stable indexes, parsed from their labels.
     ReorderByStableIndexes,
+    /// Assigns a label to a space.
     SetLabel(SetSpaceLabelArgs),
+    /// Move the currently active window to another space, determined by its stable label.
     MoveWindow {
         stable_space_index: StableSpaceIndex,
 
-        #[arg(short, long, default_value_t = false)]
+        /// If the target space does not exist, it will be created before focusing it.
+        /// The space will belong to the currently active display.
+        #[arg(long, default_value_t = false)]
         create_if_not_found: bool,
     },
     // TODO: warp (move) window in a given direction

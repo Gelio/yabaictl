@@ -2,6 +2,8 @@
 name = "yabaictl"
 version = "0.1.0"
 edition = "2021"
+authors = ["Grzegorz Rozdzialik"]
+description = "Control yabai like it is i3. Improved space and window management for yabai"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
