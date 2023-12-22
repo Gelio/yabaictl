@@ -246,3 +246,19 @@ impl YabaiCommand for MoveWindowToSpace {
 
     fn parse_output(&self, _output: &str) -> Self::Output {}
 }
+
+pub struct CreateSpace;
+
+impl YabaiCommand for CreateSpace {
+    type Output = ();
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "space".to_string(),
+            "--create".to_string(),
+        ]
+    }
+
+    fn parse_output(&self, _output: &str) -> Self::Output {}
+}

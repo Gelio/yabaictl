@@ -26,7 +26,7 @@ struct Cli {
     command: Command,
 }
 
-#[derive(Args)]
+#[derive(Args, Clone)]
 #[group(required = true, multiple = false)]
 struct SpaceSpecifier {
     next_or_previous: Option<NextOrPrevious>,
@@ -43,7 +43,13 @@ struct SpaceSpecifier {
 
 #[derive(Subcommand)]
 enum Command {
-    FocusSpace(SpaceSpecifier),
+    FocusSpace {
+        #[command(flatten)]
+        space_specifier: SpaceSpecifier,
+
+        #[arg(short, long, default_value_t = false)]
+        create_if_not_found: bool,
+    },
     FocusWindow {
         direction: Direction,
     },
@@ -65,16 +71,19 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::FocusSpace(space_specifier) => {
+        Command::FocusSpace {
+            space_specifier,
+            create_if_not_found,
+        } => {
             if let Some(index) = space_specifier.index {
                 focus_space_by_index(SpaceIndex(index))
             } else if let Some(next_or_previous) = space_specifier.next_or_previous {
                 focus_next_or_previous_space(next_or_previous)
             } else if let Some(label_prefix) = space_specifier.label_prefix {
-                focus_space_by_label(&label_prefix)
+                focus_space_by_label(&label_prefix, create_if_not_found)
             } else if let Some(stable_index) = space_specifier.stable_index {
                 let label_prefix = Space::label(stable_index, None);
-                focus_space_by_label(&label_prefix)
+                focus_space_by_label(&label_prefix, create_if_not_found)
             } else {
                 unreachable!("Some space specifier is required");
             }
