@@ -26,7 +26,7 @@ struct Cli {
 
 #[derive(Args, Clone)]
 #[group(required = true, multiple = false)]
-struct SpaceSpecifier {
+struct FocusSpaceSpecifier {
     /// Next or previous space based on the active one.
     /// Wraps within the display.
     next_or_previous: Option<NextOrPrevious>,
@@ -39,17 +39,37 @@ struct SpaceSpecifier {
     stable_index: Option<StableSpaceIndex>,
 }
 
+#[derive(Args)]
+struct TargetSpaceUsingStableIndexOptions {
+    /// If the target space does not exist, it will be created before focusing it.
+    /// The space will belong to the currently active display.
+    #[arg(long, default_value_t = false)]
+    create_if_not_found: bool,
+}
+
+#[derive(Args)]
+struct MoveWindowToSpaceByStableIndexArgs {
+    stable_space_index: StableSpaceIndex,
+
+    #[command(flatten)]
+    target_space_options: TargetSpaceUsingStableIndexOptions,
+}
+
+#[derive(Args)]
+struct MoveWindowSpaceSpecifier {
+    #[command(flatten)]
+    by_stable_space_index: MoveWindowToSpaceByStableIndexArgs,
+}
+
 #[derive(Subcommand)]
 enum Command {
     /// Focuses a space.
     FocusSpace {
         #[command(flatten)]
-        space_specifier: SpaceSpecifier,
+        space_specifier: FocusSpaceSpecifier,
 
-        /// If the target space does not exist, it will be created before focusing it.
-        /// The space will belong to the currently active display.
-        #[arg(long, default_value_t = false)]
-        create_if_not_found: bool,
+        #[command(flatten)]
+        target_space_options: TargetSpaceUsingStableIndexOptions,
 
         /// Spaces with 0 windows that are in the background (not visible) are going
         /// to be removed.
@@ -71,16 +91,8 @@ enum Command {
     ReorderByStableIndexes,
     /// Assigns a label to a space.
     SetLabel(SetSpaceLabelArgs),
-    /// Move the currently active window to another space, determined by its stable label.
-    MoveWindow {
-        stable_space_index: StableSpaceIndex,
-
-        /// If the target space does not exist, it will be created before focusing it.
-        /// The space will belong to the currently active display.
-        #[arg(long, default_value_t = false)]
-        create_if_not_found: bool,
-    },
-    // TODO: warp (move) window in a given direction
+    /// Move the currently active window to another space, determined by its stable index.
+    MoveWindow(MoveWindowSpaceSpecifier),
 }
 
 fn main() -> anyhow::Result<()> {
@@ -91,16 +103,16 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::FocusSpace {
             space_specifier,
-            create_if_not_found: create_space_if_not_found,
+            target_space_options,
             destroy_empty_background_spaces,
         } => {
             if let Some(next_or_previous) = space_specifier.next_or_previous {
                 focus_next_or_previous_space(next_or_previous)?;
             } else if let Some(label_prefix) = space_specifier.label_prefix {
-                focus_space_by_label(&label_prefix, create_space_if_not_found)?;
+                focus_space_by_label(&label_prefix, target_space_options.create_if_not_found)?;
             } else if let Some(stable_index) = space_specifier.stable_index {
                 let label_prefix = Space::label(stable_index, None);
-                focus_space_by_label(&label_prefix, create_space_if_not_found)?;
+                focus_space_by_label(&label_prefix, target_space_options.create_if_not_found)?;
             } else {
                 unreachable!("Some space specifier is required");
             }
@@ -120,10 +132,14 @@ fn main() -> anyhow::Result<()> {
         Command::SetLabel(args) => {
             set_space_label(args).and_then(|_| reorder_spaces_by_stable_indexes())
         }
-        Command::MoveWindow {
-            stable_space_index,
-            create_if_not_found: create_space_if_not_found,
-        } => move_window_to_space(stable_space_index, create_space_if_not_found),
+        Command::MoveWindow(MoveWindowSpaceSpecifier {
+            by_stable_space_index,
+        }) => move_window_to_space(
+            by_stable_space_index.stable_space_index,
+            by_stable_space_index
+                .target_space_options
+                .create_if_not_found,
+        ),
     }
     .and_then(|_| simple_bar::update().context("Cannot update simple-bar"))
 }
