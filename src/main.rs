@@ -1,3 +1,4 @@
+use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
 use yabaictl::{
     cli::{
@@ -14,6 +15,7 @@ use yabaictl::{
     },
     label::space::StableSpaceIndex,
     position::Direction,
+    simple_bar,
     yabai::transport::{Space, SpaceIndex},
 };
 
@@ -88,4 +90,5 @@ fn main() -> anyhow::Result<()> {
         }
         Command::MoveWindow { stable_space_index } => move_window_to_space(stable_space_index),
     }
+    .and_then(|_| simple_bar::update().context("Cannot update simple-bar"))
 }
