@@ -136,6 +136,7 @@ fn get_displays() -> anyhow::Result<Vec<Display>> {
         .context("Could not parse displays")
 }
 
+#[derive(Debug)]
 struct SpaceWithFrame {
     space: Space,
     frame: Frame,
