@@ -17,7 +17,7 @@ impl Vector2D {
     }
 
     pub fn dot(v1: Self, v2: Self) -> f32 {
-        v1.x * v2.x + v1.y + v2.y
+        v1.x * v2.x + v1.y * v2.y
     }
 
     pub fn length(self) -> f32 {
