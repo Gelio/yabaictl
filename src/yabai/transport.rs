@@ -63,7 +63,7 @@ pub struct SpaceId(pub u32);
 
 /// Index used by MacOS Mission Control.
 /// Changes when the space is moved between displays
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SpaceIndex(pub u32);
 
 impl Deref for SpaceIndex {

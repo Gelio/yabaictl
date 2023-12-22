@@ -262,3 +262,22 @@ impl YabaiCommand for CreateSpace {
 
     fn parse_output(&self, _output: &str) -> Self::Output {}
 }
+
+pub struct DestoySpace {
+    pub index: SpaceIndex,
+}
+
+impl YabaiCommand for DestoySpace {
+    type Output = ();
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "space".to_string(),
+            "--destroy".to_string(),
+            self.index.to_string(),
+        ]
+    }
+
+    fn parse_output(&self, _output: &str) -> Self::Output {}
+}

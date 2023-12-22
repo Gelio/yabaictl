@@ -2,6 +2,7 @@ use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
 use yabaictl::{
     cli::{
+        destroy_spaces,
         focus_space::{focus_next_or_previous_space, focus_space_by_label, NextOrPrevious},
         focus_window_in_direction::focus_window_in_direction,
         label_spaces::label_spaces,
@@ -43,6 +44,9 @@ enum Command {
 
         #[arg(long, default_value_t = false)]
         create_if_not_found: bool,
+
+        #[arg(long, default_value_t = false)]
+        destroy_empty_background_spaces: bool,
     },
     FocusWindow {
         direction: Direction,
@@ -71,17 +75,24 @@ fn main() -> anyhow::Result<()> {
         Command::FocusSpace {
             space_specifier,
             create_if_not_found: create_space_if_not_found,
+            destroy_empty_background_spaces,
         } => {
             if let Some(next_or_previous) = space_specifier.next_or_previous {
-                focus_next_or_previous_space(next_or_previous)
+                focus_next_or_previous_space(next_or_previous)?;
             } else if let Some(label_prefix) = space_specifier.label_prefix {
-                focus_space_by_label(&label_prefix, create_space_if_not_found)
+                focus_space_by_label(&label_prefix, create_space_if_not_found)?;
             } else if let Some(stable_index) = space_specifier.stable_index {
                 let label_prefix = Space::label(stable_index, None);
-                focus_space_by_label(&label_prefix, create_space_if_not_found)
+                focus_space_by_label(&label_prefix, create_space_if_not_found)?;
             } else {
                 unreachable!("Some space specifier is required");
             }
+
+            if destroy_empty_background_spaces {
+                destroy_spaces::destroy_empty_background_spaces()?;
+            }
+
+            Ok(())
         }
         Command::FocusWindow { direction } => focus_window_in_direction(direction),
         Command::MoveSpace { direction } => {
