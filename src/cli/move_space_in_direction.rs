@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context};
-use log::{info, warn};
+use log::info;
 
 use crate::{
     position::{get_element_to_focus, Direction},
@@ -32,24 +32,23 @@ pub fn move_space_in_direction(direction: Direction) -> anyhow::Result<()> {
             anyhow!("Could not find the display for the active space {active_space:?}",)
         })?;
 
-    if let Some(display_to_focus) =
-        get_element_to_focus(&active_display.frame, &displays, direction)
-    {
-        info!("Focusing display {}", *display_to_focus.index);
+    let Some(target_display) = get_element_to_focus(&active_display.frame, &displays, direction)
+    else {
+        anyhow::bail!("No display found in direction {direction:?}")
+    };
 
-        execute_yabai_cmd(&SendSpaceToDisplay::new(
-            active_space.index,
-            display_to_focus.index,
-        ))
-        .with_context(|| {
-            format!(
-                "Could not send space {} to display {}",
-                *active_space.index, *display_to_focus.index
-            )
-        })?;
-    } else {
-        warn!("No display found in direction {direction:?}");
-    }
+    info!("Focusing display {}", *target_display.index);
+
+    execute_yabai_cmd(&SendSpaceToDisplay::new(
+        active_space.index,
+        target_display.index,
+    ))
+    .with_context(|| {
+        format!(
+            "Could not send space {} to display {}",
+            *active_space.index, *target_display.index
+        )
+    })?;
 
     Ok(())
 }
