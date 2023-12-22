@@ -61,6 +61,9 @@ enum Command {
     SetLabel(SetSpaceLabelArgs),
     MoveWindow {
         stable_space_index: StableSpaceIndex,
+
+        #[arg(short, long, default_value_t = false)]
+        create_if_not_found: bool,
     },
     // TODO: warp (move) window in a given direction
 }
@@ -73,17 +76,17 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::FocusSpace {
             space_specifier,
-            create_if_not_found,
+            create_if_not_found: create_space_if_not_found,
         } => {
             if let Some(index) = space_specifier.index {
                 focus_space_by_index(SpaceIndex(index))
             } else if let Some(next_or_previous) = space_specifier.next_or_previous {
                 focus_next_or_previous_space(next_or_previous)
             } else if let Some(label_prefix) = space_specifier.label_prefix {
-                focus_space_by_label(&label_prefix, create_if_not_found)
+                focus_space_by_label(&label_prefix, create_space_if_not_found)
             } else if let Some(stable_index) = space_specifier.stable_index {
                 let label_prefix = Space::label(stable_index, None);
-                focus_space_by_label(&label_prefix, create_if_not_found)
+                focus_space_by_label(&label_prefix, create_space_if_not_found)
             } else {
                 unreachable!("Some space specifier is required");
             }
@@ -97,7 +100,10 @@ fn main() -> anyhow::Result<()> {
         Command::SetLabel(args) => {
             set_space_label(args).and_then(|_| reorder_spaces_by_stable_indexes())
         }
-        Command::MoveWindow { stable_space_index } => move_window_to_space(stable_space_index),
+        Command::MoveWindow {
+            stable_space_index,
+            create_if_not_found: create_space_if_not_found,
+        } => move_window_to_space(stable_space_index, create_space_if_not_found),
     }
     .and_then(|_| simple_bar::update().context("Cannot update simple-bar"))
 }

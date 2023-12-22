@@ -1,8 +1,10 @@
 use std::{num::ParseIntError, ops::Deref, str::FromStr};
 
+use anyhow::Context;
+use log::debug;
 use thiserror::Error;
 
-use crate::yabai::transport::Space;
+use crate::yabai::{self, cli::execute_yabai_cmd, transport::Space};
 
 use super::Labelable;
 
@@ -112,6 +114,36 @@ impl Space {
 
         output
     }
+}
+
+pub fn create_space_with_label(label: String) -> anyhow::Result<Space> {
+    execute_yabai_cmd(&yabai::command::CreateSpace).context("Cannot create a new space")?;
+
+    let spaces = execute_yabai_cmd(&yabai::command::QuerySpaces {
+        only_current_display: true,
+    })
+    .context("Cannot query spaces")?
+    .context("Cannot parse spaces")?;
+
+    let created_space = spaces.into_iter().last().expect("The created space is added as the last one in the current display. It must have at least 1 space");
+
+    debug!(
+        "Created new space with index {:?} on display {:?}",
+        created_space.index, created_space.display_index
+    );
+
+    execute_yabai_cmd(&yabai::command::LabelSpace::new(
+        created_space.index,
+        label.to_owned(),
+    ))
+    .with_context(|| {
+        format!(
+            "Cannot set label {label} to a space with index {:?}",
+            created_space.index
+        )
+    })?;
+
+    Ok(created_space)
 }
 
 #[cfg(test)]
