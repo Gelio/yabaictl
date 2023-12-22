@@ -227,3 +227,22 @@ impl YabaiCommand for MoveSpace {
 
     fn parse_output(&self, _output: &str) -> Self::Output {}
 }
+
+pub struct MoveWindowToSpace {
+    pub target_space_label: String,
+}
+
+impl YabaiCommand for MoveWindowToSpace {
+    type Output = ();
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "window".to_string(),
+            "--space".to_string(),
+            self.target_space_label.clone(),
+        ]
+    }
+
+    fn parse_output(&self, _output: &str) -> Self::Output {}
+}

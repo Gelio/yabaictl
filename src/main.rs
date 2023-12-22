@@ -8,6 +8,7 @@ use yabaictl::{
         focus_window_in_direction::focus_window_in_direction,
         label_spaces::label_spaces,
         move_space_in_direction::move_space_in_direction,
+        move_window_to_space::move_window_to_space,
         reorder::reorder_spaces_by_stable_indexes,
         set_space_label::{set_space_label, SetSpaceLabelArgs},
     },
@@ -41,13 +42,19 @@ struct SpaceSpecifier {
 #[derive(Subcommand)]
 enum Command {
     FocusSpace(SpaceSpecifier),
-    FocusWindow { direction: Direction },
-    MoveSpace { direction: Direction },
+    FocusWindow {
+        direction: Direction,
+    },
+    MoveSpace {
+        direction: Direction,
+    },
     LabelSpaces,
     ReorderByStableIndexes,
     SetLabel(SetSpaceLabelArgs),
+    MoveWindow {
+        stable_space_index: StableSpaceIndex,
+    },
     // TODO: warp (move) window in a given direction
-    // TODO: move window to a space using stable_index
 }
 
 fn main() -> anyhow::Result<()> {
@@ -79,5 +86,6 @@ fn main() -> anyhow::Result<()> {
         Command::SetLabel(args) => {
             set_space_label(args).and_then(|_| reorder_spaces_by_stable_indexes())
         }
+        Command::MoveWindow { stable_space_index } => move_window_to_space(stable_space_index),
     }
 }
