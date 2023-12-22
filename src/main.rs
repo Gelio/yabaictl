@@ -2,10 +2,7 @@ use anyhow::Context;
 use clap::{Args, Parser, Subcommand};
 use yabaictl::{
     cli::{
-        focus_space::{
-            focus_next_or_previous_space, focus_space_by_index, focus_space_by_label,
-            NextOrPrevious,
-        },
+        focus_space::{focus_next_or_previous_space, focus_space_by_label, NextOrPrevious},
         focus_window_in_direction::focus_window_in_direction,
         label_spaces::label_spaces,
         move_space_in_direction::move_space_in_direction,
@@ -16,7 +13,7 @@ use yabaictl::{
     label::space::StableSpaceIndex,
     position::Direction,
     simple_bar,
-    yabai::transport::{Space, SpaceIndex},
+    yabai::transport::Space,
 };
 
 #[derive(Parser)]
@@ -31,13 +28,10 @@ struct Cli {
 struct SpaceSpecifier {
     next_or_previous: Option<NextOrPrevious>,
 
-    #[arg(long = "index")]
-    index: Option<u32>,
-
-    #[arg(long = "label")]
+    #[arg(long)]
     label_prefix: Option<String>,
 
-    #[arg(long = "stable-index")]
+    #[arg(long)]
     stable_index: Option<StableSpaceIndex>,
 }
 
@@ -47,7 +41,7 @@ enum Command {
         #[command(flatten)]
         space_specifier: SpaceSpecifier,
 
-        #[arg(short, long, default_value_t = false)]
+        #[arg(long, default_value_t = false)]
         create_if_not_found: bool,
     },
     FocusWindow {
@@ -78,9 +72,7 @@ fn main() -> anyhow::Result<()> {
             space_specifier,
             create_if_not_found: create_space_if_not_found,
         } => {
-            if let Some(index) = space_specifier.index {
-                focus_space_by_index(SpaceIndex(index))
-            } else if let Some(next_or_previous) = space_specifier.next_or_previous {
+            if let Some(next_or_previous) = space_specifier.next_or_previous {
                 focus_next_or_previous_space(next_or_previous)
             } else if let Some(label_prefix) = space_specifier.label_prefix {
                 focus_space_by_label(&label_prefix, create_space_if_not_found)

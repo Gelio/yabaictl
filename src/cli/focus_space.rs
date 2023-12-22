@@ -6,23 +6,9 @@ use crate::{
     label::space::create_space_with_label,
     yabai::{
         cli::execute_yabai_cmd,
-        command::{FocusSpaceByIndex, QuerySpaceByIndex, QuerySpaces},
-        transport::SpaceIndex,
+        command::{FocusSpaceByIndex, QuerySpaces},
     },
 };
-
-pub fn focus_space_by_index(index: SpaceIndex) -> anyhow::Result<()> {
-    let space = execute_yabai_cmd(&QuerySpaceByIndex::new(index))
-        .context("Could not query space by index in yabai")?
-        .context("Could not parse query space output")?;
-
-    if space.has_focus {
-        info!("Space is alredy focused. Skipping");
-        return Ok(());
-    }
-
-    execute_yabai_cmd(&FocusSpaceByIndex::new(index)).context("Could not focus space")
-}
 
 #[derive(ValueEnum, Clone, Copy, Debug)]
 pub enum NextOrPrevious {
