@@ -85,7 +85,16 @@ enum Command {
     /// Works across displays.
     FocusWindow { direction: Direction },
     /// Move the active space in a given direction across displays.
-    MoveSpace { direction: Direction },
+    MoveSpace {
+        direction: Direction,
+
+        /// Yabai does not allow moving the last space from a display.
+        ///
+        /// This flag will make it so that in this situation, an extra space will be created for
+        /// that display in the background, so moving the active space is possible.
+        #[arg(long, default_value_t = false)]
+        create_extra_space_if_last_on_display: bool,
+    },
     /// Assigns stable indexes to spaces using labels.
     LabelSpaces,
     /// Reorders spaces using their stable indexes, parsed from their labels.
@@ -128,9 +137,11 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Command::FocusWindow { direction } => focus_window_in_direction(direction),
-        Command::MoveSpace { direction } => {
-            move_space_in_direction(direction).and_then(|_| reorder_spaces_by_stable_indexes())
-        }
+        Command::MoveSpace {
+            direction,
+            create_extra_space_if_last_on_display,
+        } => move_space_in_direction(direction, create_extra_space_if_last_on_display)
+            .and_then(|_| reorder_spaces_by_stable_indexes()),
         Command::LabelSpaces => label_spaces().and_then(|_| reorder_spaces_by_stable_indexes()),
         Command::ReorderByStableIndexes => reorder_spaces_by_stable_indexes(),
         Command::SetLabel(args) => {

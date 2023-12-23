@@ -1,15 +1,18 @@
 use anyhow::{anyhow, Context};
-use log::info;
 
 use crate::{
     position::{get_element_to_focus, Direction},
     yabai::{
+        self,
         cli::execute_yabai_cmd,
         command::{QueryDisplays, QuerySpaces, SendSpaceToDisplay},
     },
 };
 
-pub fn move_space_in_direction(direction: Direction) -> anyhow::Result<()> {
+pub fn move_space_in_direction(
+    direction: Direction,
+    create_extra_space_if_last_on_display: bool,
+) -> anyhow::Result<()> {
     let spaces = execute_yabai_cmd(&QuerySpaces {
         only_current_display: false,
     })
@@ -37,7 +40,21 @@ pub fn move_space_in_direction(direction: Direction) -> anyhow::Result<()> {
         anyhow::bail!("No display found in direction {direction:?}")
     };
 
-    info!("Focusing display {}", *target_display.index);
+    if active_display.spaces.len() == 1 {
+        if create_extra_space_if_last_on_display {
+            log::info!("The active space is the only one in the display {:?}. Creating a new one to allow moving the active space", target_display.index);
+
+            execute_yabai_cmd(&yabai::command::CreateSpace).context("Cannot create a new space")?;
+        } else {
+            log::warn!("The active space is the only one in the display {:?}. Yabai will most likely fail to send it to another display", target_display.index);
+        }
+    }
+
+    log::info!(
+        "Sending the space {:?} to display {:?}",
+        active_space.index,
+        target_display.index
+    );
 
     execute_yabai_cmd(&SendSpaceToDisplay::new(
         active_space.index,
