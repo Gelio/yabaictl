@@ -18,6 +18,10 @@ use yabaictl::{
     yabai::transport::Space,
 };
 
+// TODO: add a config file with:
+// * options with defaults for `create_if_not_found` and `destroy_empty_background_spaces`
+// * default space descriptions to use when using stable-indexed spaces
+
 #[derive(Parser)]
 #[command(author, about, version)]
 struct Cli {
