@@ -143,3 +143,10 @@ fn main() -> anyhow::Result<()> {
     }
     .and_then(|_| simple_bar::update().context("Cannot update simple-bar"))
 }
+
+#[cfg(test)]
+#[test]
+fn verify_cli() {
+    use clap::CommandFactory;
+    Cli::command().debug_assert()
+}
