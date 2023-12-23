@@ -1,3 +1,5 @@
+use crate::position::Direction;
+
 use super::transport::{Display, DisplayIndex, Space, SpaceIndex, Window, WindowId};
 
 pub trait YabaiCommand {
@@ -276,6 +278,45 @@ impl YabaiCommand for DestoySpace {
             "space".to_string(),
             "--destroy".to_string(),
             self.index.to_string(),
+        ]
+    }
+
+    fn parse_output(&self, _output: &str) -> Self::Output {}
+}
+
+pub enum WarpWindowArg {
+    Direction(Direction),
+    WindowId(WindowId),
+}
+
+impl std::fmt::Display for WarpWindowArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WarpWindowArg::Direction(direction) => direction.fmt(f),
+            WarpWindowArg::WindowId(window_id) => window_id.fmt(f),
+        }
+    }
+}
+
+pub struct WarpWindow {
+    arg: WarpWindowArg,
+}
+
+impl WarpWindow {
+    pub fn new(arg: WarpWindowArg) -> Self {
+        Self { arg }
+    }
+}
+
+impl YabaiCommand for WarpWindow {
+    type Output = ();
+
+    fn to_args(&self) -> Vec<String> {
+        vec![
+            "-m".to_string(),
+            "window".to_string(),
+            "--warp".to_string(),
+            self.arg.to_string(),
         ]
     }
 

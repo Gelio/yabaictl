@@ -91,6 +91,12 @@ impl Deref for DisplayIndex {
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct WindowId(pub u32);
 
+impl std::fmt::Display for WindowId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl Deref for WindowId {
     type Target = u32;
 

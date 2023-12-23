@@ -24,3 +24,25 @@ impl FromStr for Direction {
         }
     }
 }
+
+impl std::fmt::Display for Direction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Direction::South => write!(f, "south"),
+            Direction::North => write!(f, "north"),
+            Direction::East => write!(f, "east"),
+            Direction::West => write!(f, "west"),
+        }
+    }
+}
+
+impl Direction {
+    pub fn into_opposite(self) -> Self {
+        match self {
+            Direction::South => Direction::North,
+            Direction::North => Direction::South,
+            Direction::East => Direction::West,
+            Direction::West => Direction::East,
+        }
+    }
+}

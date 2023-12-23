@@ -7,6 +7,7 @@ use yabaictl::{
         focus_window_in_direction::focus_window_in_direction,
         label_spaces::label_spaces,
         move_space_in_direction::move_space_in_direction,
+        move_window_in_direction::move_window_in_direction,
         move_window_to_space::move_window_to_space,
         reorder::reorder_spaces_by_stable_indexes,
         set_space_label::{set_space_label, SetSpaceLabelArgs},
@@ -47,18 +48,18 @@ struct TargetSpaceUsingStableIndexOptions {
     create_if_not_found: bool,
 }
 
-#[derive(Args)]
-struct MoveWindowToSpaceByStableIndexArgs {
-    stable_space_index: StableSpaceIndex,
+#[derive(Subcommand)]
+enum MoveWindowSpaceSpecifier {
+    /// Move the window to a desired space, specified by a stable index.
+    ToSpace {
+        stable_space_index: StableSpaceIndex,
 
-    #[command(flatten)]
-    target_space_options: TargetSpaceUsingStableIndexOptions,
-}
-
-#[derive(Args)]
-struct MoveWindowSpaceSpecifier {
-    #[command(flatten)]
-    by_stable_space_index: MoveWindowToSpaceByStableIndexArgs,
+        #[command(flatten)]
+        target_space_options: TargetSpaceUsingStableIndexOptions,
+    },
+    /// Move the window in a given direction.
+    /// Supports moving the window across displays.
+    InDirection { direction: Direction },
 }
 
 #[derive(Subcommand)]
@@ -91,8 +92,11 @@ enum Command {
     ReorderByStableIndexes,
     /// Assigns a label to a space.
     SetLabel(SetSpaceLabelArgs),
-    /// Move the currently active window to another space, determined by its stable index.
-    MoveWindow(MoveWindowSpaceSpecifier),
+    /// Move the currently active window to another space or in a given direction.
+    MoveWindow {
+        #[command(subcommand)]
+        space_specifier: MoveWindowSpaceSpecifier,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -132,14 +136,16 @@ fn main() -> anyhow::Result<()> {
         Command::SetLabel(args) => {
             set_space_label(args).and_then(|_| reorder_spaces_by_stable_indexes())
         }
-        Command::MoveWindow(MoveWindowSpaceSpecifier {
-            by_stable_space_index,
-        }) => move_window_to_space(
-            by_stable_space_index.stable_space_index,
-            by_stable_space_index
-                .target_space_options
-                .create_if_not_found,
-        ),
+        Command::MoveWindow { space_specifier } => match space_specifier {
+            MoveWindowSpaceSpecifier::ToSpace {
+                stable_space_index,
+                target_space_options,
+            } => move_window_to_space(stable_space_index, target_space_options.create_if_not_found)
+                .and_then(|_| reorder_spaces_by_stable_indexes()),
+            MoveWindowSpaceSpecifier::InDirection { direction } => {
+                move_window_in_direction(direction)
+            }
+        },
     }
     .and_then(|_| simple_bar::update().context("Cannot update simple-bar"))
 }
