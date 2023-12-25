@@ -5,17 +5,11 @@ use crate::{
     yabai::{
         self,
         cli::execute_yabai_cmd,
-        transport::{Space, Window},
+        transport::{Space, SpaceIndex, SpaceType, Window},
     },
 };
 
 pub fn move_window_in_direction(direction: Direction) -> anyhow::Result<()> {
-    // TODO:
-    // 1. Find a window in <direction> in the same display
-    // 2. If found, do a yabai -m window --warp <direction>
-    // 3. If not found, find a window in <direction> in another display
-    // 4. If found, yabai -m window --warp <target window ID> && yabai -m window --warp <opposite direction>
-    // 5. If not found, yabai -m window --space <space ID in a given direction>
     let IntrospectedWindows {
         active_window,
         other_visible_windows,
@@ -37,33 +31,70 @@ pub fn move_window_in_direction(direction: Direction) -> anyhow::Result<()> {
                 .with_context(|| format!("Cannot warp window in direction {direction:?}"))
             } else {
                 log::info!(
-                    "The closest window in direction {direction:?} is in another space ({:?}). Warping the active window to {:?}",
+                    "The closest window in direction {direction:?} is in another space ({:?})",
                     target_window.space_index,
-                    target_window.id
                 );
 
-                execute_yabai_cmd(&yabai::command::WarpWindow::new(
-                    yabai::command::WarpWindowArg::WindowId(target_window.id),
-                ))
-                .with_context(|| format!(
-                    "Cannot warp window to target window with ID {target_window_id:?} ({target_window_title})",
-                    target_window_id = target_window.id,
-                    target_window_title = target_window.title
-                ))?;
+                let active_window_space_type = get_space_type(active_window.space_index)
+                    .context("Cannot get the space type of the active window")?;
+                log::debug!("active_window_space_type = {active_window_space_type:?}");
+                let target_window_space_type = get_space_type(target_window.space_index)
+                    .context("Cannot get the space type of the target window")?;
+                log::debug!("target_window_space_type = {target_window_space_type:?}");
 
-                log::info!("Focusing the warped window {:?}", active_window.id);
-                execute_yabai_cmd(&yabai::command::FocusWindowById::new(active_window.id))
-                    .with_context(|| format!("Cannot focus window {:?}", active_window.id))?;
+                match (active_window_space_type, target_window_space_type) {
+                    (SpaceType::BSP, SpaceType::BSP) => {
+                        log::info!(
+                            "Both active and target space types are {bsp:?}. Warping the active window to {:?}",
+                            target_window.id,
+                            bsp = SpaceType::BSP,
+                        );
 
-                let opposite_direction = direction.into_opposite();
-                log::info!("Now warping that window in the opposite direction ({opposite_direction:?}), so it is closer to the original space.");
+                        execute_yabai_cmd(&yabai::command::WarpWindow::new(
+                            yabai::command::WarpWindowArg::WindowId(target_window.id),
+                        ))
+                        .with_context(|| format!(
+                            "Cannot warp window to target window with ID {target_window_id:?} ({target_window_title})",
+                            target_window_id = target_window.id,
+                            target_window_title = target_window.title
+                        ))?;
+                        log::info!("Focusing the moved window {:?}", active_window.id);
+                        execute_yabai_cmd(&yabai::command::FocusWindowById::new(active_window.id))
+                            .with_context(|| {
+                                format!("Cannot focus window {:?}", active_window.id)
+                            })?;
 
-                execute_yabai_cmd(&yabai::command::WarpWindow::new(
-                    yabai::command::WarpWindowArg::Direction(opposite_direction),
-                ))
-                .with_context(|| {
-                    format!("Cannot warp window to in opposite direction {opposite_direction:?}",)
-                })
+                        let opposite_direction = direction.into_opposite();
+                        log::info!("Now warping that window in the opposite direction ({opposite_direction:?}), so it is closer to the original space.");
+
+                        execute_yabai_cmd(&yabai::command::WarpWindow::new(
+                            yabai::command::WarpWindowArg::Direction(opposite_direction),
+                        ))
+                        .with_context(|| {
+                            format!("Cannot warp window to in opposite direction {opposite_direction:?}",)
+                        })
+                    }
+                    (_, _) => {
+                        log::info!(
+                            "Active or target space type is {stack:?}. Sending the current window to space {:?}",
+                            target_window.space_index,
+                            stack = SpaceType::Stack,
+                        );
+
+                        let target_space = target_window.space_index.to_string();
+                        execute_yabai_cmd(&yabai::command::MoveWindowToSpace {
+                            // TODO: convert to an enum for handling SpaceIndex and String
+                            target_space_label: target_space.clone(),
+                        })
+                        .with_context(|| {
+                            format!("Cannot move the current window to space {target_space}")
+                        })?;
+
+                        log::info!("Focusing the moved window {:?}", active_window.id);
+                        execute_yabai_cmd(&yabai::command::FocusWindowById::new(active_window.id))
+                            .with_context(|| format!("Cannot focus window {:?}", active_window.id))
+                    }
+                }
             }
         }
         None => {
@@ -170,4 +201,12 @@ fn find_space_in_direction(direction: Direction) -> anyhow::Result<Space> {
     log::trace!("Found space {visible_space_on_target_display:?} in direction {direction:?}");
 
     Ok(visible_space_on_target_display)
+}
+
+fn get_space_type(index: SpaceIndex) -> anyhow::Result<SpaceType> {
+    let current_space = execute_yabai_cmd(&yabai::command::QuerySpaceByIndex::new(index))
+        .with_context(|| format!("Cannot query space by index {index:?}"))?
+        .context("Cannot parse space")?;
+
+    Ok(current_space.r#type)
 }
