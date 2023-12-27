@@ -120,7 +120,7 @@ impl AsRef<Frame> for Display {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum SpaceType {
     BSP,
@@ -146,7 +146,7 @@ fn deserialize_space_label<'de, D: Deserializer<'de>>(
     Ok(if label.is_empty() { None } else { Some(label) })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Space {
     pub id: SpaceId,
