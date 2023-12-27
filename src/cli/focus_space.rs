@@ -1,10 +1,12 @@
+use std::borrow::Cow;
+
 use anyhow::Context;
 use clap::ValueEnum;
-use log::{debug, info};
 
 use crate::{
     label::space::create_space_with_label,
     yabai::{
+        self,
         cli::execute_yabai_cmd,
         command::{FocusSpaceByIndex, QuerySpaces},
     },
@@ -29,7 +31,7 @@ pub fn focus_next_or_previous_space(next_or_previous: NextOrPrevious) -> anyhow:
         .context("No space in the current display has focus")?;
 
     if spaces_in_display.len() == 1 {
-        info!("Only one space in the current display. It is already focused.");
+        log::info!("Only one space in the current display. It is already focused.");
         return Ok(());
     }
 
@@ -46,7 +48,7 @@ pub fn focus_next_or_previous_space(next_or_previous: NextOrPrevious) -> anyhow:
 
     let space_to_focus = &spaces_in_display[space_to_focus_index];
 
-    info!("Focusing space {}", *space_to_focus.index);
+    log::info!("Focusing space {}", *space_to_focus.index);
     execute_yabai_cmd(&FocusSpaceByIndex::new(space_to_focus.index))
         .with_context(|| format!("Could not focus space {}", *space_to_focus.index))
 }
@@ -58,47 +60,78 @@ pub fn focus_space_by_label(
     let spaces = execute_yabai_cmd(&QuerySpaces {
         only_current_display: false,
     })
-    .context("Could not get spaes in the current display")?
+    .context("Could not queyr spaces")?
     .context("Could not parse spaces")?;
 
+    let (space_to_focus, space_label_to_focus) = {
+        let space_with_prefix_result = find_space_with_prefix(&spaces, label_prefix);
+
+        if matches!(
+            space_with_prefix_result,
+            Err(FindSpaceWithLabelPrefixError::NoSpacesFoundWithLabelPrefix { .. })
+        ) && create_space_if_not_found
+        {
+            log::debug!("Space with label prefix {label_prefix} not found. Creating a new one");
+
+            let created_space = create_space_with_label(label_prefix.to_owned())
+                .with_context(|| format!("Could not create space with label {label_prefix}"))?;
+
+            Ok((Cow::Owned(created_space), label_prefix))
+        } else {
+            space_with_prefix_result.map(|(space, label)| (Cow::Borrowed(space), label))
+        }
+    }
+    .context("Cannot find the space to focus")?;
+
+    log::info!("Focusing space {space_label_to_focus}");
+    execute_yabai_cmd(&FocusSpaceByIndex::new(space_to_focus.index))
+        .with_context(|| format!("Cannot focus space with index {}", *space_to_focus.index))
+}
+
+#[derive(Debug, thiserror::Error)]
+enum FindSpaceWithLabelPrefixError {
+    #[error("No spaces found with label prefix \"{label_prefix}\"")]
+    NoSpacesFoundWithLabelPrefix { label_prefix: String },
+
+    #[error(
+        "More than one space found with prefix \"{label_prefix}\": {matching_spaces_labels:?}"
+    )]
+    MoreThanOneSpaceFoundWithLabelPrefix {
+        label_prefix: String,
+        matching_spaces_labels: Vec<String>,
+    },
+}
+
+fn find_space_with_prefix<'s>(
+    spaces: &'s [yabai::transport::Space],
+    label_prefix: &str,
+) -> Result<(&'s yabai::transport::Space, &'s str), FindSpaceWithLabelPrefixError> {
     let spaces_with_prefix: Vec<_> = spaces
-        .into_iter()
-        .filter_map(|space| match space.label.as_ref() {
-            Some(label) if label.starts_with(label_prefix) => {
-                let label = label.clone();
-                Some((space, label))
-            }
+        .iter()
+        .filter_map(|space| match space.label.as_deref() {
+            Some(label) if label.starts_with(label_prefix) => Some((space, label)),
             _ => None,
         })
         .collect();
 
-    let (space_to_focus, space_label_to_focus) = match spaces_with_prefix.len() {
-        0 => {
-            if create_space_if_not_found {
-                debug!("Space with label prefix {label_prefix} not found. Creating a new one");
-
-                let created_space = create_space_with_label(label_prefix.to_owned())
-                    .with_context(|| format!("Could not create space with label {label_prefix}"))?;
-
-                (created_space, label_prefix.to_owned())
-            } else {
-                anyhow::bail!("No spaces found with prefix {label_prefix}")
-            }
-        }
-        1 => spaces_with_prefix
+    match spaces_with_prefix.len() {
+        0 => Err(
+            FindSpaceWithLabelPrefixError::NoSpacesFoundWithLabelPrefix {
+                label_prefix: label_prefix.to_owned(),
+            },
+        ),
+        1 => Ok(spaces_with_prefix
             .into_iter()
             .next()
-            .expect("The vector contains exactly one element"),
-        _ => anyhow::bail!(
-            "More than one space found with prefix {label_prefix}: {matching_spaces_labels:?}",
-            matching_spaces_labels = spaces_with_prefix
-                .into_iter()
-                .map(|(_, label)| label)
-                .collect::<Vec<_>>()
+            .expect("The vector contains exactly one element")),
+        _ => Err(
+            FindSpaceWithLabelPrefixError::MoreThanOneSpaceFoundWithLabelPrefix {
+                label_prefix: label_prefix.to_owned(),
+                matching_spaces_labels: spaces_with_prefix
+                    .into_iter()
+                    .map(|(_, label)| label.to_owned())
+                    .collect::<Vec<_>>(),
+            },
         ),
-    };
-
-    info!("Focusing space {space_label_to_focus}");
-    execute_yabai_cmd(&FocusSpaceByIndex::new(space_to_focus.index))
-        .with_context(|| format!("Cannot focus space with index {}", *space_to_focus.index))
+    }
 }
