@@ -27,7 +27,6 @@ pub enum YabaiCommandExecError {
 }
 
 pub fn execute_yabai_cmd<C: YabaiCommand>(
-    // TODO: AsRef instead of &C so we can pass both references and owned types
     yabai_cmd: &C,
 ) -> Result<C::Output, YabaiCommandExecError> {
     let args = yabai_cmd.to_args();
