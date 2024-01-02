@@ -126,10 +126,12 @@ fn main() -> anyhow::Result<()> {
             if let Some(next_or_previous) = space_specifier.next_or_previous {
                 focus_next_or_previous_space(next_or_previous)?;
             } else if let Some(label_prefix) = space_specifier.label_prefix {
-                focus_space_by_label(&label_prefix, target_space_options.create_if_not_found)?;
+                focus_space_by_label(&label_prefix, target_space_options.create_if_not_found)
+                    .and_then(|_| reorder_spaces_by_stable_indexes())?;
             } else if let Some(stable_index) = space_specifier.stable_index {
                 let label_prefix = Space::label(stable_index, None);
-                focus_space_by_label(&label_prefix, target_space_options.create_if_not_found)?;
+                focus_space_by_label(&label_prefix, target_space_options.create_if_not_found)
+                    .and_then(|_| reorder_spaces_by_stable_indexes())?;
             } else {
                 unreachable!("Some space specifier is required");
             }
