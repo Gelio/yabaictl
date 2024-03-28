@@ -125,6 +125,7 @@ impl AsRef<Frame> for Display {
 pub enum SpaceType {
     BSP,
     Stack,
+    Float,
 }
 
 fn deserialize_window_id_maybe_zero<'de, D: Deserializer<'de>>(
